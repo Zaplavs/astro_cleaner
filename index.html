@@ -2,16 +2,22 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Астро-Уборщик 4.0</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Астро-Уборщик Release</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://yandex.ru/games/sdk/v2"></script>
 </head>
 <body>
     <div id="damageFlash"></div>
 
+    <!-- Туториал (Обучение) -->
+    <div id="tutorialOverlay" class="hidden">
+        <div class="tutorial-text" id="tutorialText">Управляй кораблем и собирай мусор!</div>
+    </div>
+
     <!-- Главное Меню -->
     <div id="mainMenu" class="screen-overlay">
+        <button id="btnMuteMenu" class="sound-btn">🔊</button>
         <div class="menu-container">
             <h1 class="game-title">АСТРО<br>УБОРЩИК</h1>
             <button id="btnPlay" class="mega-btn">ВЫБРАТЬ СЕКТОР</button>
@@ -47,6 +53,7 @@
             </div>
 
             <div class="hud-right">
+                <button id="btnMuteHud" class="sound-btn small">🔊</button>
                 <div class="stat-box gold">💰 <span id="coins">0</span>$</div>
                 <button id="openShopBtn" class="hud-btn">🛒 МАГАЗИН</button>
             </div>

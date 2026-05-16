@@ -1,22 +1,46 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// --- ЗВУКОВАЯ СИСТЕМА (AUDIO MANAGER) ---
+const audio = {
+    muted: false,
+    sounds: {
+        coin: new Audio('coin.mp3'),
+        suck: new Audio('suck.mp3'),
+        hit: new Audio('hit.mp3'),
+        upgrade: new Audio('upgrade.mp3')
+    },
+    play: function(soundName) {
+        if (!this.muted && this.sounds[soundName]) {
+            // Клонируем ноду для возможности играть один и тот же звук одновременно
+            let sound = this.sounds[soundName].cloneNode();
+            sound.volume = 0.5;
+            sound.play().catch(e => { /* Игнорируем ошибки автоплея в браузере */ });
+        }
+    },
+    toggleMute: function() {
+        this.muted = !this.muted;
+        return this.muted;
+    }
+};
+
 // --- UI ЭЛЕМЕНТЫ ---
 const ui = {
-    // Экраны
     mainMenu: document.getElementById('mainMenu'),
     sectorMenu: document.getElementById('sectorMenu'),
     hud: document.getElementById('hud'),
     shopModal: document.getElementById('shopModal'),
     overlayScreen: document.getElementById('overlayScreen'),
     reviveScreen: document.getElementById('reviveScreen'),
+    tutorialOverlay: document.getElementById('tutorialOverlay'),
+    tutorialText: document.getElementById('tutorialText'),
 
-    // Меню
     btnPlay: document.getElementById('btnPlay'),
     sectorGrid: document.getElementById('sectorGrid'),
     btnBackToMain: document.getElementById('btnBackToMain'),
+    btnMuteMenu: document.getElementById('btnMuteMenu'),
+    btnMuteHud: document.getElementById('btnMuteHud'),
 
-    // HUD
     level: document.getElementById('level'),
     progress: document.getElementById('progress'),
     coins: document.getElementById('coins'),
@@ -26,7 +50,6 @@ const ui = {
     dronesCount: document.getElementById('dronesCount'),
     damageFlash: document.getElementById('damageFlash'),
 
-    // Магазин
     openShopBtn: document.getElementById('openShopBtn'),
     closeShopBtn: document.getElementById('closeShopBtn'),
     buyDroneBtn: document.getElementById('buyDroneBtn'),
@@ -36,7 +59,6 @@ const ui = {
     upgradeMagnetBtn: document.getElementById('upgradeMagnetBtn'),
     upgradeSpeedBtn: document.getElementById('upgradeSpeedBtn'),
 
-    // Концевые экраны
     overlayTitle: document.getElementById('overlayTitle'),
     overlayText: document.getElementById('overlayText'),
     nextSectorBtn: document.getElementById('nextSectorBtn'),
@@ -47,9 +69,10 @@ const ui = {
 // --- СОСТОЯНИЕ ИГРЫ (ОБЛАКО) ---
 let state = {
     coins: 0,
-    maxSector: 1, // Максимальный открытый сектор
+    maxSector: 1,
+    tutorialCompleted: false,
+    muted: false,
 
-    // Уровни прокачки
     hpLevel: 1,
     profitLevel: 1,
     speedLevel: 1,
@@ -61,9 +84,9 @@ let state = {
 let currentSector = 1;
 let activeDrones = 0;
 let debrisCollected = 0;
-let gameState = 'MENU'; // MENU, SECTOR_SELECT, PLAYING, PAUSED, GAME_OVER
+let gameState = 'MENU';
+let tutorialStage = 0; // 0: выкл, 1: двигайся, 2: сдай мусор, 3: магазин
 
-// Настройки стоимости
 const costs = {
     hp: (lvl) => 100 * lvl,
     profit: (lvl) => 150 * lvl,
@@ -78,10 +101,7 @@ let playerSDK = null;
 
 // --- ИГРОВЫЕ ОБЪЕКТЫ ---
 const player = {
-    x: 0, y: 0, radius: 20,
-    inventory: 0,
-    hp: 100,
-    invulnerableTime: 0,
+    x: 0, y: 0, radius: 20, inventory: 0, hp: 100, invulnerableTime: 0,
     get maxHp() { return 100 + (state.hpLevel - 1) * 25; },
     get speed() { return 4 + state.speedLevel; },
     get maxCapacity() { return 10 + state.capacityLevel * 5; },
@@ -90,75 +110,66 @@ const player = {
 };
 
 let target = { x: player.x, y: player.y };
-
 const base = { x: 0, y: 0, radius: 80, rotation: 0 };
+let debrisList = []; let piratesList = []; let floatingTexts = []; let explosions = []; let orbitAngle = 0;
 
-let debrisList = [];
-let piratesList = [];
-let floatingTexts = [];
-let explosions = [];
-let orbitAngle = 0;
-
-// --- БАЛАНС СЕКТОРОВ ---
 function getDebrisNeeded() { return 20 + currentSector * 10; }
-// Базовая стоимость растет, плюс множитель
 function getDebrisValue() { return Math.floor((5 + (currentSector - 1) * 3) * player.profitMult); }
 function getPirateCount() { return Math.min(1 + Math.floor(currentSector / 2), 15); }
 
-// --- ИНИЦИАЛИЗАЦИЯ ---
+// --- ИНИЦИАЛИЗАЦИЯ И РЕСАЙЗ ---
 function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+    // Обновляем позицию базы при ресайзе, чтобы она всегда была по центру
     base.x = canvas.width / 2;
     base.y = canvas.height / 2;
 }
 window.addEventListener('resize', resize);
 resize();
 
-window.addEventListener('mousemove', (e) => { if(gameState==='PLAYING'){target.x = e.clientX; target.y = e.clientY;} });
-window.addEventListener('touchmove', (e) => { if(gameState==='PLAYING'){target.x = e.touches[0].clientX; target.y = e.touches[0].clientY;} });
-window.addEventListener('touchstart', (e) => { if(gameState==='PLAYING'){target.x = e.touches[0].clientX; target.y = e.touches[0].clientY;} });
-
-// --- НАВИГАЦИЯ ЭКРАНОВ ---
-function showScreen(screenId) {
-    // Скрываем все
-    ui.mainMenu.classList.add('hidden');
-    ui.sectorMenu.classList.add('hidden');
-    ui.hud.classList.add('hidden');
-    ui.shopModal.classList.add('hidden');
-    ui.overlayScreen.classList.add('hidden');
-    ui.reviveScreen.classList.add('hidden');
-
-    // Показываем нужный
-    if (screenId === 'MAIN') {
-        gameState = 'MENU';
-        ui.mainMenu.classList.remove('hidden');
-    } else if (screenId === 'SECTORS') {
-        gameState = 'SECTOR_SELECT';
-        buildSectorGrid();
-        ui.sectorMenu.classList.remove('hidden');
-    } else if (screenId === 'GAME') {
-        gameState = 'PLAYING';
-        ui.hud.classList.remove('hidden');
+// Управление
+function setTarget(x, y) {
+    if (gameState === 'PLAYING') {
+        target.x = x; target.y = y;
     }
+}
+window.addEventListener('mousemove', (e) => setTarget(e.clientX, e.clientY));
+window.addEventListener('touchmove', (e) => setTarget(e.touches[0].clientX, e.touches[0].clientY));
+window.addEventListener('touchstart', (e) => setTarget(e.touches[0].clientX, e.touches[0].clientY));
+
+// --- НАВИГАЦИЯ ---
+function updateMuteButtons() {
+    const icon = audio.muted ? '🔇' : '🔊';
+    ui.btnMuteMenu.innerText = icon;
+    ui.btnMuteHud.innerText = icon;
+}
+
+function toggleSound() {
+    state.muted = audio.toggleMute();
+    updateMuteButtons();
+    saveProgress();
+}
+ui.btnMuteMenu.onclick = toggleSound;
+ui.btnMuteHud.onclick = toggleSound;
+
+function showScreen(screenId) {
+    ui.mainMenu.classList.add('hidden'); ui.sectorMenu.classList.add('hidden');
+    ui.hud.classList.add('hidden'); ui.shopModal.classList.add('hidden');
+    ui.overlayScreen.classList.add('hidden'); ui.reviveScreen.classList.add('hidden');
+
+    if (screenId === 'MAIN') { gameState = 'MENU'; ui.mainMenu.classList.remove('hidden'); }
+    else if (screenId === 'SECTORS') { gameState = 'SECTOR_SELECT'; buildSectorGrid(); ui.sectorMenu.classList.remove('hidden'); }
+    else if (screenId === 'GAME') { gameState = 'PLAYING'; ui.hud.classList.remove('hidden'); }
 }
 
 function buildSectorGrid() {
     ui.sectorGrid.innerHTML = '';
-    // Показываем на 1 сектор больше, чем максимум (заблокированный для затравки), или до 50
     let displayMax = Math.min(Math.max(state.maxSector + 2, 10), 50);
-
     for (let i = 1; i <= displayMax; i++) {
-        let btn = document.createElement('button');
-        btn.className = 'sector-btn';
-        btn.innerText = i;
-
-        if (i <= state.maxSector) {
-            btn.onclick = () => startGame(i);
-        } else {
-            btn.disabled = true;
-            btn.innerText = '🔒';
-        }
+        let btn = document.createElement('button'); btn.className = 'sector-btn'; btn.innerText = i;
+        if (i <= state.maxSector) btn.onclick = () => startGame(i);
+        else { btn.disabled = true; btn.innerText = '🔒'; }
         ui.sectorGrid.appendChild(btn);
     }
 }
@@ -170,15 +181,13 @@ function spawnDebris() {
     if (debrisList.length < maxDebris) {
         let x, y, dDist;
         do {
-            x = Math.random() * canvas.width;
-            y = Math.random() * canvas.height;
+            x = Math.random() * canvas.width; y = Math.random() * canvas.height;
             dDist = Math.hypot(x - base.x, y - base.y);
         } while(dDist < base.radius + 50);
 
         debrisList.push({
             x: x, y: y, radius: 4 + Math.random() * 8, pulled: false,
-            rotation: Math.random() * Math.PI * 2, rotSpeed: (Math.random() - 0.5) * 0.1,
-            type: Math.floor(Math.random() * 3)
+            rotation: Math.random() * Math.PI * 2, rotSpeed: (Math.random() - 0.5) * 0.1, type: Math.floor(Math.random() * 3)
         });
     }
 }
@@ -186,12 +195,13 @@ setInterval(spawnDebris, 800);
 
 function spawnPirate() {
     if (gameState !== 'PLAYING') return;
+    // В туториале не спавним пиратов до первого захода на базу
+    if (tutorialStage > 0 && tutorialStage < 3) return;
+
     if (piratesList.length < getPirateCount()) {
-        const angle = Math.random() * Math.PI * 2;
-        const dist = Math.max(canvas.width, canvas.height);
+        const angle = Math.random() * Math.PI * 2; const dist = Math.max(canvas.width, canvas.height);
         piratesList.push({
-            x: player.x + Math.cos(angle) * dist,
-            y: player.y + Math.sin(angle) * dist,
+            x: player.x + Math.cos(angle) * dist, y: player.y + Math.sin(angle) * dist,
             radius: 15, speed: 2 + currentSector * 0.2, wobble: Math.random() * Math.PI * 2
         });
     }
@@ -200,17 +210,13 @@ setInterval(spawnPirate, 2000);
 
 // --- ЛОГИКА ---
 function updateUI() {
-    ui.level.innerText = currentSector;
-    ui.progress.innerText = `${debrisCollected} / ${getDebrisNeeded()}`;
-    ui.coins.innerText = state.coins;
-    ui.capacity.innerText = `${player.inventory} / ${player.maxCapacity}`;
+    ui.level.innerText = currentSector; ui.progress.innerText = `${debrisCollected} / ${getDebrisNeeded()}`;
+    ui.coins.innerText = state.coins; ui.capacity.innerText = `${player.inventory} / ${player.maxCapacity}`;
     ui.dronesCount.innerText = `${activeDrones} / 3`;
 
-    const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
-    ui.hpFill.style.width = hpPercent + '%';
+    ui.hpFill.style.width = Math.max(0, (player.hp / player.maxHp) * 100) + '%';
     ui.hpText.innerText = `❤️ ${Math.floor(player.hp)}/${player.maxHp}`;
 
-    // Магазин
     ui.upgradeHpBtn.innerText = `Улучшить (${costs.hp(state.hpLevel)}$)`;
     ui.upgradeProfitBtn.innerText = `Улучшить (${costs.profit(state.profitLevel)}$)`;
     ui.upgradeSpeedBtn.innerText = `Улучшить (${costs.speed(state.speedLevel)}$)`;
@@ -225,24 +231,29 @@ function updateUI() {
     ui.buyDroneBtn.disabled = state.coins < costs.drone() || activeDrones >= 3;
 }
 
+function showTutorialText(text, timeMs = 0) {
+    ui.tutorialText.innerText = text;
+    ui.tutorialOverlay.classList.remove('hidden');
+    if (timeMs > 0) {
+        setTimeout(() => ui.tutorialOverlay.classList.add('hidden'), timeMs);
+    }
+}
+
 function showFloatingText(text, x, y, color) { floatingTexts.push({ text, x, y, color, life: 1.0 }); }
 function createExplosion(x, y, color) {
-    for(let i=0; i<10; i++) {
-        explosions.push({ x: x, y: y, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10, life: 1.0, color: color });
-    }
+    audio.play('hit');
+    for(let i=0; i<10; i++) explosions.push({ x: x, y: y, vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10, life: 1.0, color: color });
 }
 
 function takeDamage() {
     if (player.invulnerableTime > 0) return;
+    audio.play('hit');
     player.hp -= 25; player.invulnerableTime = 60;
-    ui.damageFlash.style.opacity = '1';
-    setTimeout(() => { ui.damageFlash.style.opacity = '0'; }, 100);
+    ui.damageFlash.style.opacity = '1'; setTimeout(() => { ui.damageFlash.style.opacity = '0'; }, 100);
     updateUI();
 
     if (player.hp <= 0) {
-        gameState = 'GAME_OVER';
-        ui.hud.classList.add('hidden');
-        ui.reviveScreen.classList.remove('hidden');
+        gameState = 'GAME_OVER'; ui.hud.classList.add('hidden'); ui.reviveScreen.classList.remove('hidden');
     }
 }
 
@@ -253,29 +264,34 @@ function update() {
 
     const dx = target.x - player.x; const dy = target.y - player.y;
     const dist = Math.hypot(dx, dy);
-    if (dist > player.speed) {
-        player.x += (dx / dist) * player.speed; player.y += (dy / dist) * player.speed;
-    }
+    if (dist > player.speed) { player.x += (dx / dist) * player.speed; player.y += (dy / dist) * player.speed; }
     if (player.invulnerableTime > 0) player.invulnerableTime--;
 
     // Мусор
     for (let i = debrisList.length - 1; i >= 0; i--) {
-        let d = debrisList[i];
-        d.rotation += d.rotSpeed;
+        let d = debrisList[i]; d.rotation += d.rotSpeed;
         let ddx = player.x - d.x; let ddy = player.y - d.y;
         let dDist = Math.hypot(ddx, ddy);
 
-        if (player.inventory < player.maxCapacity && dDist < player.magnetRadius) d.pulled = true;
+        if (player.inventory < player.maxCapacity && dDist < player.magnetRadius) {
+            if (!d.pulled) audio.play('suck');
+            d.pulled = true;
+        }
 
         if (d.pulled) {
             d.x += (ddx / dDist) * (player.speed * 2); d.y += (ddy / dDist) * (player.speed * 2);
             if (dDist < player.radius) {
                 player.inventory++; debrisList.splice(i, 1); updateUI();
+
+                // Логика туториала (Этап 2)
+                if (tutorialStage === 1 && player.inventory >= player.maxCapacity) {
+                    tutorialStage = 2;
+                    showTutorialText("Багажник полон! Лети на Базу (зеленая зона), чтобы продать груз!");
+                }
             }
         }
     }
 
-    // Дроны
     let dronePositions = []; let orbitRadius = 60;
     for (let i = 0; i < activeDrones; i++) {
         let angle = orbitAngle + (Math.PI * 2 / activeDrones) * i;
@@ -289,10 +305,7 @@ function update() {
         let pDist = Math.hypot(pdx, pdy);
 
         p.wobble += 0.1;
-        if (pDist > 0) {
-            p.x += (pdx / pDist) * p.speed + Math.cos(p.wobble) * 2;
-            p.y += (pdy / pDist) * p.speed + Math.sin(p.wobble) * 2;
-        }
+        if (pDist > 0) { p.x += (pdx / pDist) * p.speed + Math.cos(p.wobble) * 2; p.y += (pdy / pDist) * p.speed + Math.sin(p.wobble) * 2; }
 
         let pirateHit = false;
         for (let j = 0; j < dronePositions.length; j++) {
@@ -300,14 +313,12 @@ function update() {
             if (Math.hypot(dp.x - p.x, dp.y - p.y) < dp.radius + p.radius) {
                 createExplosion(p.x, p.y, '#e53e3e'); createExplosion(dp.x, dp.y, '#00ffff');
                 showFloatingText("ЩИТ СРАБОТАЛ!", p.x, p.y, '#00ffff');
-                activeDrones--; piratesList.splice(i, 1); pirateHit = true; updateUI();
-                break;
+                activeDrones--; piratesList.splice(i, 1); pirateHit = true; updateUI(); break;
             }
         }
 
         if (!pirateHit && pDist < player.radius + p.radius) {
-            takeDamage();
-            p.x -= (pdx / pDist) * 50; p.y -= (pdy / pDist) * 50;
+            takeDamage(); p.x -= (pdx / pDist) * 50; p.y -= (pdy / pDist) * 50;
         }
     }
 
@@ -315,25 +326,27 @@ function update() {
     if (Math.hypot(base.x - player.x, base.y - player.y) < base.radius + player.radius && player.inventory > 0) {
         let earned = player.inventory * getDebrisValue();
         state.coins += earned;
+        audio.play('coin');
         showFloatingText(`+${earned}$`, player.x, player.y - 30, '#00ff00');
         debrisCollected += player.inventory; player.inventory = 0;
 
         saveProgress(); updateUI();
 
-        if (debrisCollected >= getDebrisNeeded()) {
-            gameState = 'PAUSED';
-            ui.hud.classList.add('hidden');
-            ui.overlayScreen.classList.remove('hidden');
+        // Логика туториала (Этап 3)
+        if (tutorialStage === 2) {
+            tutorialStage = 3;
+            showTutorialText("Открой Магазин в правом верхнем углу и улучши свой корабль!");
+        }
 
-            // Если прошли максимальный сектор - открываем новый
-            if (currentSector === state.maxSector) {
-                state.maxSector++;
-                saveProgress();
+        if (debrisCollected >= getDebrisNeeded()) {
+            gameState = 'PAUSED'; ui.hud.classList.add('hidden'); ui.overlayScreen.classList.remove('hidden');
+            if (tutorialStage === 3) {
+                state.tutorialCompleted = true; tutorialStage = 0; saveProgress();
             }
+            if (currentSector === state.maxSector) { state.maxSector++; saveProgress(); }
         }
     }
 
-    // Анимации
     for (let i = floatingTexts.length - 1; i >= 0; i--) {
         floatingTexts[i].y -= 1; floatingTexts[i].life -= 0.02;
         if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
@@ -345,7 +358,6 @@ function update() {
 }
 
 // --- ОТРИСОВКА ---
-// (Отрисовка осталась без изменений с прошлой версии)
 function drawPlayer(x, y, isInvulnerable) {
     ctx.save(); ctx.translate(x, y);
     if (isInvulnerable && Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
@@ -357,13 +369,13 @@ function drawPlayer(x, y, isInvulnerable) {
 
 function drawBase(x, y, rot) {
     ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
-    ctx.fillStyle = '#1a365d'; ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 2;
+    ctx.fillStyle = '#1a365d'; ctx.strokeStyle = '#00ff00'; ctx.lineWidth = 2; // Изменено на зеленый по запросу
     for(let i=0; i<4; i++) {
         ctx.rotate(Math.PI/2); ctx.fillRect(-20, -75, 40, 50); ctx.strokeRect(-20, -75, 40, 50);
         ctx.beginPath(); ctx.moveTo(-10, -75); ctx.lineTo(-10, -25); ctx.moveTo(10, -75); ctx.lineTo(10, -25); ctx.stroke();
     }
     ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.fillStyle = '#2d3748'; ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fillStyle = '#ff00ff'; ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fillStyle = '#00ff00'; ctx.fill(); // Зеленое ядро
     ctx.restore();
     ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center'; ctx.fillText('БАЗА', x, y + 5);
 }
@@ -396,7 +408,6 @@ function drawDrone(x, y, rot) {
 function draw() {
     ctx.fillStyle = '#0b0c10'; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Рисуем космос всегда, даже в меню, для красоты фона
     ctx.fillStyle = '#fff';
     for(let i=0; i<20; i++) {
         let sx = (i * 137) % canvas.width; let sy = (i * 251 + base.rotation * 100) % canvas.height;
@@ -404,9 +415,7 @@ function draw() {
     }
 
     if (gameState === 'MENU' || gameState === 'SECTOR_SELECT') {
-        base.rotation += 0.002;
-        drawBase(base.x, base.y, base.rotation);
-        return; // В меню не рисуем игрока и мусор
+        base.rotation += 0.002; drawBase(base.x, base.y, base.rotation); return;
     }
 
     drawBase(base.x, base.y, base.rotation);
@@ -435,107 +444,81 @@ function draw() {
 function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
 
 // --- ВЗАИМОДЕЙСТВИЕ И СОХРАНЕНИЯ ---
-function saveProgress() {
-    console.log("Сохранение в облако:", state);
-    if (playerSDK) playerSDK.setData(state).catch(e => console.log('Save Error', e));
-}
+function saveProgress() { if (playerSDK) playerSDK.setData(state).catch(e => console.log('Save Error', e)); }
 
-// Запуск конкретного сектора
 function startGame(sectorNumber) {
-    currentSector = sectorNumber;
-    debrisCollected = 0;
-    player.hp = player.maxHp;
-    player.inventory = 0;
-    activeDrones = 0;
+    currentSector = sectorNumber; debrisCollected = 0; player.hp = player.maxHp; player.inventory = 0; activeDrones = 0;
     debrisList = []; piratesList = [];
 
-    player.x = base.x; player.y = base.y + 100;
+    // Старт немного ниже базы
+    player.x = base.x; player.y = base.y + 120;
     target.x = player.x; target.y = player.y;
 
-    updateUI();
-    showScreen('GAME');
+    updateUI(); showScreen('GAME');
+
+    // Запуск туториала
+    if (sectorNumber === 1 && !state.tutorialCompleted) {
+        tutorialStage = 1;
+        showTutorialText("Управляй кораблем и собирай мусор!", 3000);
+    }
 }
 
-// --- ОБРАБОТЧИКИ КНОПОК ---
 ui.btnPlay.onclick = () => showScreen('SECTORS');
 ui.btnBackToMain.onclick = () => showScreen('MAIN');
 
-ui.openShopBtn.onclick = () => { gameState = 'PAUSED'; updateUI(); ui.hud.classList.add('hidden'); ui.shopModal.classList.remove('hidden'); };
+ui.openShopBtn.onclick = () => {
+    gameState = 'PAUSED'; updateUI(); ui.hud.classList.add('hidden'); ui.shopModal.classList.remove('hidden');
+    if (tutorialStage === 3) {
+        ui.tutorialOverlay.classList.add('hidden');
+    }
+};
 ui.closeShopBtn.onclick = () => { gameState = 'PLAYING'; target.x = player.x; target.y = player.y; ui.shopModal.classList.add('hidden'); ui.hud.classList.remove('hidden'); };
 
 function buyUpgrade(type) {
+    let success = false;
     if (type === 'drone') {
-        if (state.coins >= costs.drone() && activeDrones < 3) {
-            state.coins -= costs.drone(); activeDrones++; saveProgress(); updateUI();
-        }
+        if (state.coins >= costs.drone() && activeDrones < 3) { state.coins -= costs.drone(); activeDrones++; success = true; }
     } else {
         const cost = costs[type](state[type + 'Level']);
-        if (state.coins >= cost) {
-            state.coins -= cost; state[type + 'Level']++;
-            if (type === 'hp') player.hp = player.maxHp; // Лечим при апгрейде ХП
-            saveProgress(); updateUI();
-        }
+        if (state.coins >= cost) { state.coins -= cost; state[type + 'Level']++; if (type === 'hp') player.hp = player.maxHp; success = true; }
+    }
+
+    if (success) {
+        audio.play('upgrade'); saveProgress(); updateUI();
     }
 }
 
-ui.buyDroneBtn.onclick = () => buyUpgrade('drone');
-ui.upgradeHpBtn.onclick = () => buyUpgrade('hp');
-ui.upgradeProfitBtn.onclick = () => buyUpgrade('profit');
-ui.upgradeSpeedBtn.onclick = () => buyUpgrade('speed');
-ui.upgradeCapBtn.onclick = () => buyUpgrade('capacity');
-ui.upgradeMagnetBtn.onclick = () => buyUpgrade('magnet');
+ui.buyDroneBtn.onclick = () => buyUpgrade('drone'); ui.upgradeHpBtn.onclick = () => buyUpgrade('hp');
+ui.upgradeProfitBtn.onclick = () => buyUpgrade('profit'); ui.upgradeSpeedBtn.onclick = () => buyUpgrade('speed');
+ui.upgradeCapBtn.onclick = () => buyUpgrade('capacity'); ui.upgradeMagnetBtn.onclick = () => buyUpgrade('magnet');
 
 ui.nextSectorBtn.onclick = () => {
-    if (ys) {
-        ys.adv.showFullscreenAdv({
-            callbacks: { onClose: () => showScreen('SECTORS'), onError: () => showScreen('SECTORS') }
-        });
-    } else {
-        showScreen('SECTORS');
-    }
+    if (ys) { ys.adv.showFullscreenAdv({ callbacks: { onClose: () => showScreen('SECTORS'), onError: () => showScreen('SECTORS') } }); }
+    else { showScreen('SECTORS'); }
 };
-
-function deathToMenu() {
-    showScreen('SECTORS');
-}
 
 ui.reviveBtn.onclick = () => {
     if (ys) {
         ys.adv.showRewardedVideo({
             callbacks: {
-                onRewarded: () => {
-                    player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = [];
-                    updateUI(); showScreen('GAME');
-                },
-                onError: deathToMenu
+                onRewarded: () => { player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = []; updateUI(); showScreen('GAME'); },
+                onError: () => showScreen('SECTORS')
             }
         });
-    } else {
-        player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = [];
-        updateUI(); showScreen('GAME');
-    }
+    } else { player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = []; updateUI(); showScreen('GAME'); }
 };
-
-ui.restartBtn.onclick = deathToMenu;
+ui.restartBtn.onclick = () => showScreen('SECTORS');
 
 // --- СТАРТ И YANDEX SDK ---
-showScreen('MAIN');
-gameLoop();
+showScreen('MAIN'); gameLoop();
 
 if (typeof YaGames !== 'undefined') {
     YaGames.init().then(ysdk => {
-        ys = ysdk;
-        ys.features.LoadingAPI?.ready();
+        ys = ysdk; ys.features.LoadingAPI?.ready();
         ys.getPlayer({ scopes: false }).then(_player => {
             playerSDK = _player;
-            // Пытаемся загрузить данные
             playerSDK.getData().then(data => {
-                if (data && data.maxSector) {
-                    console.log("Данные загружены из облака:", data);
-                    state = { ...state, ...data };
-                } else {
-                    console.log("Новый игрок, используются базовые настройки.");
-                }
+                if (data && data.maxSector) { state = { ...state, ...data }; audio.muted = state.muted; updateMuteButtons(); }
                 updateUI();
             }).catch(e => console.log('Load error', e));
         }).catch(e => console.log('Auth error', e));
