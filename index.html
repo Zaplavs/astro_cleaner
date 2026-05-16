@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Астро-Уборщик</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Подключаем Yandex Games SDK -->
+    <script src="https://yandex.ru/games/sdk/v2"></script>
+</head>
+<body>
+    <div id="ui">
+        <div class="top-bar">
+            <div class="stat">Уровень: <span id="level">1</span> (Прогресс: <span id="progress">0 / 10</span>)</div>
+            <div class="stat">Монеты: <span id="coins">0</span></div>
+            <div class="stat">Вместимость: <span id="capacity">0 / 10</span></div>
+        </div>
+
+        <div class="bottom-bar">
+            <button id="upgradeSpeedBtn">Улучшить скорость (50)</button>
+            <button id="upgradeCapBtn">Улучшить вместимость (50)</button>
+            <button id="rewardBtn">+500 монет (Реклама)</button>
+        </div>
+
+        <button id="nextLevelBtn" style="display: none;">Следующий уровень</button>
+    </div>
+
+    <canvas id="gameCanvas"></canvas>
+    <script src="game.js"></script>
+</body>
+</html>

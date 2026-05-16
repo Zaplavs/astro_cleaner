@@ -1,0 +1,113 @@
+/* Убираем стандартные отступы браузера */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    overflow: hidden; /* Скрываем скроллбары */
+    background-color: #0b0c10;
+    touch-action: none; /* Отключаем системные жесты браузера */
+    font-family: Arial, sans-serif;
+    user-select: none;
+}
+
+/* Растягиваем canvas на весь экран */
+canvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1; /* Канвас сзади */
+}
+
+/* Слой интерфейса поверх игры */
+#ui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 10;
+    pointer-events: none; /* Пропускаем клики сквозь UI к канвасу */
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+/* Панели управления (должны ловить клики) */
+.top-bar, .bottom-bar {
+    pointer-events: auto;
+    background: rgba(11, 12, 16, 0.8);
+    color: #fff;
+    padding: 15px;
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-bottom: 2px solid #00ffff;
+}
+
+.bottom-bar {
+    border-bottom: none;
+    border-top: 2px solid #ff00ff;
+    justify-content: center;
+}
+
+.stat {
+    font-size: 18px;
+    font-weight: bold;
+}
+
+/* Кнопки */
+button {
+    pointer-events: auto;
+    padding: 10px 20px;
+    background: #00ffff;
+    color: #000;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.2s;
+}
+
+button:active {
+    transform: scale(0.95);
+}
+
+button:disabled {
+    background: #555;
+    color: #888;
+    cursor: not-allowed;
+    transform: none;
+}
+
+#rewardBtn {
+    background: #ffcc00;
+}
+
+/* Кнопка следующего уровня по центру */
+#nextLevelBtn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    padding: 20px 40px;
+    background: #ff00ff;
+    color: white;
+    border: 3px solid #fff;
+    box-shadow: 0 0 20px #ff00ff;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: translate(-50%, -50%) scale(1); }
+    50% { transform: translate(-50%, -50%) scale(1.05); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+}
