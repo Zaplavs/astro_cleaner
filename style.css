@@ -1,113 +1,142 @@
-/* Убираем стандартные отступы браузера */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+/* Общие сбросы */
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-    overflow: hidden; /* Скрываем скроллбары */
+    overflow: hidden;
     background-color: #0b0c10;
-    touch-action: none; /* Отключаем системные жесты браузера */
-    font-family: Arial, sans-serif;
+    touch-action: none;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     user-select: none;
+    color: #fff;
 }
 
-/* Растягиваем canvas на весь экран */
 canvas {
     display: block;
     width: 100vw;
     height: 100vh;
     position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 1; /* Канвас сзади */
+    top: 0; left: 0;
+    z-index: 1;
 }
 
-/* Слой интерфейса поверх игры */
+/* Эффект урона */
+#damageFlash {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255, 0, 0, 0.5);
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s ease-out;
+}
+
+/* UI слой */
 #ui {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
+    top: 0; left: 0; right: 0; bottom: 0;
     z-index: 10;
-    pointer-events: none; /* Пропускаем клики сквозь UI к канвасу */
+    pointer-events: none;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
 }
 
-/* Панели управления (должны ловить клики) */
 .top-bar, .bottom-bar {
     pointer-events: auto;
-    background: rgba(11, 12, 16, 0.8);
-    color: #fff;
-    padding: 15px;
+    background: linear-gradient(180deg, rgba(11,12,16,0.95) 0%, rgba(11,12,16,0.7) 100%);
+    padding: 10px 20px;
     display: flex;
-    justify-content: space-around;
-    flex-wrap: wrap;
-    gap: 10px;
-    border-bottom: 2px solid #00ffff;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
 }
 
 .bottom-bar {
     border-bottom: none;
-    border-top: 2px solid #ff00ff;
+    border-top: 2px solid rgba(0, 255, 255, 0.3);
+    background: linear-gradient(0deg, rgba(11,12,16,0.95) 0%, rgba(11,12,16,0.7) 100%);
     justify-content: center;
+    gap: 15px;
+    flex-wrap: wrap;
+    padding: 15px;
 }
 
-.stat {
-    font-size: 18px;
-    font-weight: bold;
+.stat-group { display: flex; flex-direction: column; gap: 5px; flex: 1; }
+.stat-group.center { align-items: center; }
+.stat-group.right { align-items: flex-end; }
+
+.stat { font-size: 16px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
+.stat.gold { color: #ffd700; font-size: 18px; }
+
+/* HP Bar */
+.hp-bar-container { display: flex; align-items: center; gap: 10px; }
+.hp-bar {
+    width: 150px; height: 15px;
+    background: #333;
+    border-radius: 8px;
+    border: 2px solid #555;
+    overflow: hidden;
+}
+.hp-fill {
+    width: 100%; height: 100%;
+    background: linear-gradient(90deg, #ff0000, #ff4444);
+    transition: width 0.2s ease-out;
 }
 
 /* Кнопки */
 button {
     pointer-events: auto;
-    padding: 10px 20px;
-    background: #00ffff;
-    color: #000;
-    border: none;
+    padding: 10px 15px;
+    background: #1a1a24;
+    color: #00ffff;
+    border: 2px solid #00ffff;
     border-radius: 8px;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
     cursor: pointer;
-    transition: transform 0.1s, background 0.2s;
+    transition: all 0.1s;
+    text-transform: uppercase;
+    box-shadow: 0 0 10px rgba(0,255,255,0.2) inset;
 }
 
-button:active {
-    transform: scale(0.95);
-}
-
+button:active { transform: scale(0.95); }
 button:disabled {
-    background: #555;
-    color: #888;
-    cursor: not-allowed;
-    transform: none;
+    background: #222; color: #555; border-color: #555;
+    cursor: not-allowed; transform: none; box-shadow: none;
 }
+button:hover:not(:disabled) { background: rgba(0,255,255,0.1); box-shadow: 0 0 15px rgba(0,255,255,0.4) inset; }
 
-#rewardBtn {
-    background: #ffcc00;
-}
-
-/* Кнопка следующего уровня по центру */
-#nextLevelBtn {
+/* Модальные окна */
+#overlayScreen, #reviveScreen {
     position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 24px;
-    padding: 20px 40px;
-    background: #ff00ff;
-    color: white;
-    border: 3px solid #fff;
-    box-shadow: 0 0 20px #ff00ff;
-    animation: pulse 1.5s infinite;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 20;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: auto;
+}
+.hidden { display: none !important; }
+
+.modal {
+    background: #111;
+    border: 3px solid #00ffff;
+    border-radius: 15px;
+    padding: 40px;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+    max-width: 90%;
 }
 
-@keyframes pulse {
-    0% { transform: translate(-50%, -50%) scale(1); }
-    50% { transform: translate(-50%, -50%) scale(1.05); }
-    100% { transform: translate(-50%, -50%) scale(1); }
-}
+.modal h1 { color: #fff; margin-bottom: 15px; font-size: 28px; text-shadow: 0 0 10px #00ffff; }
+.modal p { color: #ccc; margin-bottom: 30px; font-size: 18px; }
+
+.modal-buttons { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
+
+.primary-btn { font-size: 18px; padding: 15px 30px; }
+.highlight { background: #ffcc00; color: #000; border-color: #ffaa00; box-shadow: 0 0 15px rgba(255,204,0,0.5); }
+.highlight:hover:not(:disabled) { background: #ffaa00; }
+.secondary-btn { font-size: 16px; padding: 15px 20px; border-color: #ff4444; color: #ff4444; }
+.secondary-btn:hover { background: rgba(255,0,0,0.1); box-shadow: 0 0 15px rgba(255,0,0,0.4) inset; }

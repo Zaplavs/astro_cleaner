@@ -3,26 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Астро-Уборщик</title>
+    <title>Астро-Уборщик 2.0</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Подключаем Yandex Games SDK -->
     <script src="https://yandex.ru/games/sdk/v2"></script>
 </head>
 <body>
+    <div id="damageFlash"></div>
+
     <div id="ui">
         <div class="top-bar">
-            <div class="stat">Уровень: <span id="level">1</span> (Прогресс: <span id="progress">0 / 10</span>)</div>
-            <div class="stat">Монеты: <span id="coins">0</span></div>
-            <div class="stat">Вместимость: <span id="capacity">0 / 10</span></div>
+            <div class="stat-group">
+                <div class="stat">Сектор: <span id="level">1</span></div>
+                <div class="stat">Прогресс: <span id="progress">0 / 50</span></div>
+            </div>
+            <div class="stat-group center">
+                <div class="stat hp-bar-container">
+                    HP: <div class="hp-bar"><div class="hp-fill" id="hpFill"></div></div>
+                </div>
+            </div>
+            <div class="stat-group right">
+                <div class="stat gold">Монеты: <span id="coins">0</span>$</div>
+                <div class="stat">Трюм: <span id="capacity">0 / 10</span></div>
+            </div>
         </div>
 
         <div class="bottom-bar">
-            <button id="upgradeSpeedBtn">Улучшить скорость (50)</button>
-            <button id="upgradeCapBtn">Улучшить вместимость (50)</button>
-            <button id="rewardBtn">+500 монет (Реклама)</button>
+            <button id="upgradeSpeedBtn">Скорость (50)</button>
+            <button id="upgradeCapBtn">Трюм (50)</button>
+            <button id="upgradeMagnetBtn">Магнит (100)</button>
+            <button id="upgradeDroneBtn">Дрон (200)</button>
         </div>
+    </div>
 
-        <button id="nextLevelBtn" style="display: none;">Следующий уровень</button>
+    <!-- Экраны состояний -->
+    <div id="overlayScreen" class="hidden">
+        <div class="modal">
+            <h1 id="overlayTitle">СЕКТОР ЗАЧИЩЕН</h1>
+            <p id="overlayText">Вы собрали весь мусор!</p>
+            <div class="modal-buttons" id="overlayButtons">
+                <button id="nextSectorBtn" class="primary-btn">Следующий сектор</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="reviveScreen" class="hidden">
+        <div class="modal">
+            <h1>КОРАБЛЬ РАЗРУШЕН</h1>
+            <p>Вас подбили пираты. Восстановить корабль за рекламу?</p>
+            <div class="modal-buttons">
+                <button id="reviveBtn" class="primary-btn highlight">Воскреснуть (Реклама)</button>
+                <button id="restartBtn" class="secondary-btn">В главное меню</button>
+            </div>
+        </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
