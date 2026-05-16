@@ -3,15 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Астро-Уборщик 3.0</title>
+    <title>Астро-Уборщик 4.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://yandex.ru/games/sdk/v2"></script>
 </head>
 <body>
     <div id="damageFlash"></div>
 
-    <!-- HUD -->
-    <div id="hud">
+    <!-- Главное Меню -->
+    <div id="mainMenu" class="screen-overlay">
+        <div class="menu-container">
+            <h1 class="game-title">АСТРО<br>УБОРЩИК</h1>
+            <button id="btnPlay" class="mega-btn">ВЫБРАТЬ СЕКТОР</button>
+        </div>
+    </div>
+
+    <!-- Выбор Сектора -->
+    <div id="sectorMenu" class="screen-overlay hidden">
+        <div class="menu-container wide">
+            <h2>КАРТА СЕКТОРОВ</h2>
+            <div id="sectorGrid" class="sector-grid">
+                <!-- Генерируется через JS -->
+            </div>
+            <button id="btnBackToMain" class="close-btn mt-20">Назад в меню</button>
+        </div>
+    </div>
+
+    <!-- HUD (Игровой интерфейс) -->
+    <div id="hud" class="hidden">
         <div class="hud-top">
             <div class="hud-left">
                 <div class="stat-box hp-box">
@@ -34,11 +53,11 @@
         </div>
     </div>
 
-    <!-- Внутриигровой магазин (Модальное окно) -->
-    <div id="shopModal" class="hidden modal-overlay">
+    <!-- Внутриигровой магазин -->
+    <div id="shopModal" class="hidden screen-overlay">
         <div class="modal shop-window">
             <h2>ОРБИТАЛЬНАЯ СТАНЦИЯ</h2>
-            <div class="shop-items">
+            <div class="shop-items scrollable">
                 <div class="shop-item">
                     <div class="item-info">
                         <h3>Дрон-Щит</h3>
@@ -49,10 +68,26 @@
 
                 <div class="shop-item">
                     <div class="item-info">
+                        <h3>Сплав Корпуса</h3>
+                        <p>Увеличивает максимальный запас прочности (HP).</p>
+                    </div>
+                    <button id="upgradeHpBtn" class="buy-btn">Улучшить</button>
+                </div>
+
+                <div class="shop-item">
+                    <div class="item-info">
+                        <h3>Улучшенный Сканер</h3>
+                        <p>Множитель прибыли: мусор стоит дороже.</p>
+                    </div>
+                    <button id="upgradeProfitBtn" class="buy-btn">Улучшить</button>
+                </div>
+
+                <div class="shop-item">
+                    <div class="item-info">
                         <h3>Отсек Трюма</h3>
                         <p>Вмещает больше мусора за рейс.</p>
                     </div>
-                    <button id="upgradeCapBtn" class="buy-btn">Улучшить (50$)</button>
+                    <button id="upgradeCapBtn" class="buy-btn">Улучшить</button>
                 </div>
 
                 <div class="shop-item">
@@ -60,7 +95,7 @@
                         <h3>Электромагнит</h3>
                         <p>Увеличивает радиус захвата мусора.</p>
                     </div>
-                    <button id="upgradeMagnetBtn" class="buy-btn">Улучшить (100$)</button>
+                    <button id="upgradeMagnetBtn" class="buy-btn">Улучшить</button>
                 </div>
 
                 <div class="shop-item">
@@ -68,31 +103,31 @@
                         <h3>Двигатель</h3>
                         <p>Увеличивает скорость полета НЛО.</p>
                     </div>
-                    <button id="upgradeSpeedBtn" class="buy-btn">Улучшить (50$)</button>
+                    <button id="upgradeSpeedBtn" class="buy-btn">Улучшить</button>
                 </div>
             </div>
-            <button id="closeShopBtn" class="close-btn">Вернуться в космос</button>
+            <button id="closeShopBtn" class="close-btn mt-20">Вернуться в космос</button>
         </div>
     </div>
 
     <!-- Экраны состояний -->
-    <div id="overlayScreen" class="hidden modal-overlay">
+    <div id="overlayScreen" class="hidden screen-overlay">
         <div class="modal">
             <h1 id="overlayTitle">СЕКТОР ЗАЧИЩЕН</h1>
             <p id="overlayText">Вы собрали весь мусор!</p>
-            <div class="modal-buttons" id="overlayButtons">
-                <button id="nextSectorBtn" class="primary-btn">Следующий сектор</button>
+            <div class="modal-buttons">
+                <button id="nextSectorBtn" class="primary-btn">В меню секторов</button>
             </div>
         </div>
     </div>
 
-    <div id="reviveScreen" class="hidden modal-overlay">
+    <div id="reviveScreen" class="hidden screen-overlay">
         <div class="modal">
             <h1>КОРАБЛЬ РАЗРУШЕН</h1>
             <p>Вас подбили пираты. Восстановить корабль за рекламу?</p>
             <div class="modal-buttons">
                 <button id="reviveBtn" class="primary-btn highlight">Воскреснуть (Реклама)</button>
-                <button id="restartBtn" class="secondary-btn">В главное меню</button>
+                <button id="restartBtn" class="secondary-btn">Отказаться</button>
             </div>
         </div>
     </div>
