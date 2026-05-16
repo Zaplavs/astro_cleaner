@@ -30,113 +30,173 @@ canvas {
     transition: opacity 0.1s ease-out;
 }
 
-/* UI слой */
-#ui {
+/* HUD (Игровой интерфейс) */
+#hud {
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
+    top: 0; left: 0; right: 0;
     z-index: 10;
     pointer-events: none;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-
-.top-bar, .bottom-bar {
-    pointer-events: auto;
-    background: linear-gradient(180deg, rgba(11,12,16,0.95) 0%, rgba(11,12,16,0.7) 100%);
-    padding: 10px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-bottom: 2px solid rgba(0, 255, 255, 0.3);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-}
-
-.bottom-bar {
-    border-bottom: none;
-    border-top: 2px solid rgba(0, 255, 255, 0.3);
-    background: linear-gradient(0deg, rgba(11,12,16,0.95) 0%, rgba(11,12,16,0.7) 100%);
-    justify-content: center;
-    gap: 15px;
-    flex-wrap: wrap;
     padding: 15px;
 }
 
-.stat-group { display: flex; flex-direction: column; gap: 5px; flex: 1; }
-.stat-group.center { align-items: center; }
-.stat-group.right { align-items: flex-end; }
+.hud-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
 
-.stat { font-size: 16px; font-weight: bold; text-shadow: 1px 1px 2px #000; }
-.stat.gold { color: #ffd700; font-size: 18px; }
+.hud-left, .hud-right {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: auto;
+}
 
-/* HP Bar */
-.hp-bar-container { display: flex; align-items: center; gap: 10px; }
-.hp-bar {
-    width: 150px; height: 15px;
-    background: #333;
+.hud-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(11, 12, 16, 0.8);
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: 2px solid #00ffff;
+    box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
+}
+
+.stat-box {
+    background: rgba(11, 12, 16, 0.8);
+    padding: 8px 12px;
     border-radius: 8px;
-    border: 2px solid #555;
+    border: 1px solid #444;
+    font-size: 16px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+}
+
+.stat-box.gold {
+    color: #ffd700;
+    border-color: #ffd700;
+    font-size: 18px;
+}
+
+/* HP Bar в HUD */
+.hp-box { border-color: #ff4444; }
+.hp-bar-bg {
+    width: 120px; height: 10px;
+    background: #333;
+    border-radius: 5px;
+    margin-top: 5px;
     overflow: hidden;
 }
-.hp-fill {
+.hp-bar-fill {
     width: 100%; height: 100%;
     background: linear-gradient(90deg, #ff0000, #ff4444);
     transition: width 0.2s ease-out;
 }
 
-/* Кнопки */
-button {
+.sector-display { font-size: 20px; font-weight: bold; color: #00ffff; }
+.progress-text { font-size: 14px; color: #ccc; }
+
+/* Кнопки HUD */
+.hud-btn {
     pointer-events: auto;
-    padding: 10px 15px;
-    background: #1a1a24;
+    padding: 12px 20px;
+    background: linear-gradient(180deg, #1a1a24 0%, #0b0c10 100%);
     color: #00ffff;
     border: 2px solid #00ffff;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.1s;
-    text-transform: uppercase;
     box-shadow: 0 0 10px rgba(0,255,255,0.2) inset;
 }
+.hud-btn:hover { background: rgba(0,255,255,0.1); box-shadow: 0 0 15px rgba(0,255,255,0.4) inset; }
+.hud-btn:active { transform: scale(0.95); }
 
-button:active { transform: scale(0.95); }
-button:disabled {
-    background: #222; color: #555; border-color: #555;
-    cursor: not-allowed; transform: none; box-shadow: none;
-}
-button:hover:not(:disabled) { background: rgba(0,255,255,0.1); box-shadow: 0 0 15px rgba(0,255,255,0.4) inset; }
-
-/* Модальные окна */
-#overlayScreen, #reviveScreen {
+/* Модальные окна (Магазин, Завершение уровня, Смерть) */
+.modal-overlay {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.85);
     z-index: 20;
     display: flex;
     justify-content: center;
     align-items: center;
     pointer-events: auto;
 }
+
 .hidden { display: none !important; }
 
 .modal {
-    background: #111;
+    background: linear-gradient(180deg, #111 0%, #1a1a24 100%);
     border: 3px solid #00ffff;
     border-radius: 15px;
-    padding: 40px;
+    padding: 30px;
     text-align: center;
-    box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+    box-shadow: 0 0 40px rgba(0, 255, 255, 0.4);
     max-width: 90%;
+    width: 500px;
 }
 
-.modal h1 { color: #fff; margin-bottom: 15px; font-size: 28px; text-shadow: 0 0 10px #00ffff; }
-.modal p { color: #ccc; margin-bottom: 30px; font-size: 18px; }
+.modal h1, .modal h2 { color: #fff; margin-bottom: 20px; font-size: 26px; text-shadow: 0 0 10px #00ffff; text-transform: uppercase; }
+.modal p { color: #ccc; margin-bottom: 25px; font-size: 16px; }
 
+/* Магазин */
+.shop-items {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.shop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 15px;
+    border: 1px solid #444;
+    border-radius: 8px;
+    text-align: left;
+}
+
+.item-info h3 { color: #00ffff; font-size: 18px; margin-bottom: 5px; }
+.item-info p { color: #aaa; font-size: 12px; margin: 0; }
+
+.buy-btn {
+    padding: 10px 15px;
+    background: #28a745;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+    min-width: 120px;
+    transition: background 0.2s;
+}
+.buy-btn:hover:not(:disabled) { background: #218838; }
+.buy-btn:disabled { background: #555; color: #888; cursor: not-allowed; }
+
+.close-btn {
+    width: 100%;
+    padding: 15px;
+    background: transparent;
+    color: #ff4444;
+    border: 2px solid #ff4444;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.close-btn:hover { background: rgba(255,0,0,0.1); }
+
+/* Кнопки других окон */
 .modal-buttons { display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; }
-
-.primary-btn { font-size: 18px; padding: 15px 30px; }
-.highlight { background: #ffcc00; color: #000; border-color: #ffaa00; box-shadow: 0 0 15px rgba(255,204,0,0.5); }
-.highlight:hover:not(:disabled) { background: #ffaa00; }
-.secondary-btn { font-size: 16px; padding: 15px 20px; border-color: #ff4444; color: #ff4444; }
-.secondary-btn:hover { background: rgba(255,0,0,0.1); box-shadow: 0 0 15px rgba(255,0,0,0.4) inset; }
+.primary-btn { font-size: 18px; padding: 15px 30px; background: #00ffff; color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;}
+.primary-btn:hover { background: #00cccc; }
+.highlight { background: #ffcc00; color: #000; border: none; box-shadow: 0 0 15px rgba(255,204,0,0.5); }
+.highlight:hover { background: #ffaa00; }
+.secondary-btn { font-size: 16px; padding: 15px 20px; background: transparent; border: 2px solid #ff4444; color: #ff4444; border-radius: 8px; cursor: pointer; }
+.secondary-btn:hover { background: rgba(255,0,0,0.1); }

@@ -7,14 +7,19 @@ const ui = {
     progress: document.getElementById('progress'),
     coins: document.getElementById('coins'),
     capacity: document.getElementById('capacity'),
+    hpText: document.getElementById('hpText'),
     hpFill: document.getElementById('hpFill'),
+    dronesCount: document.getElementById('dronesCount'),
     damageFlash: document.getElementById('damageFlash'),
 
-    // Кнопки
-    upgradeSpeedBtn: document.getElementById('upgradeSpeedBtn'),
+    // Магазин
+    openShopBtn: document.getElementById('openShopBtn'),
+    shopModal: document.getElementById('shopModal'),
+    closeShopBtn: document.getElementById('closeShopBtn'),
+    buyDroneBtn: document.getElementById('buyDroneBtn'),
     upgradeCapBtn: document.getElementById('upgradeCapBtn'),
     upgradeMagnetBtn: document.getElementById('upgradeMagnetBtn'),
-    upgradeDroneBtn: document.getElementById('upgradeDroneBtn'),
+    upgradeSpeedBtn: document.getElementById('upgradeSpeedBtn'),
 
     // Экраны
     overlayScreen: document.getElementById('overlayScreen'),
@@ -35,7 +40,7 @@ let state = {
     speedLevel: 1,
     capacityLevel: 1,
     magnetLevel: 1,
-    droneLevel: 0
+    activeDrones: 0
 };
 
 let gameState = 'PLAYING'; // PLAYING, PAUSED, GAME_OVER
@@ -45,7 +50,7 @@ const costs = {
     speed: (lvl) => 50 * lvl,
     capacity: (lvl) => 50 * lvl,
     magnet: (lvl) => 100 * lvl,
-    drone: (lvl) => lvl === 0 ? 200 : 300 * lvl
+    drone: () => 200 // Дрон всегда стоит 200
 };
 
 let ys = null;
@@ -74,9 +79,10 @@ const base = {
 let debrisList = [];
 let piratesList = [];
 let floatingTexts = [];
+let explosions = []; // Для эффекта уничтожения пирата/дрона
 
-// Дрон
-let droneObj = { angle: 0, dist: 60, radius: 8 };
+// Общая орбита для дронов
+let orbitAngle = 0;
 
 // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 function getDebrisNeeded() { return 20 + state.sector * 10; }
@@ -108,7 +114,6 @@ function spawnDebris() {
     if (gameState !== 'PLAYING') return;
     const maxDebris = 15 + state.sector * 5;
     if (debrisList.length < maxDebris) {
-        // Спавним подальше от базы
         let x, y, dDist;
         do {
             x = Math.random() * canvas.width;
@@ -122,7 +127,7 @@ function spawnDebris() {
             pulled: false,
             rotation: Math.random() * Math.PI * 2,
             rotSpeed: (Math.random() - 0.5) * 0.1,
-            type: Math.floor(Math.random() * 3) // Разные формы мусора
+            type: Math.floor(Math.random() * 3)
         });
     }
 }
@@ -131,14 +136,13 @@ setInterval(spawnDebris, 800);
 function spawnPirate() {
     if (gameState !== 'PLAYING') return;
     if (piratesList.length < getPirateCount()) {
-        // Спавн за краем экрана
         const angle = Math.random() * Math.PI * 2;
         const dist = Math.max(canvas.width, canvas.height);
         piratesList.push({
             x: player.x + Math.cos(angle) * dist,
             y: player.y + Math.sin(angle) * dist,
             radius: 15,
-            speed: 2 + state.sector * 0.2, // Пираты быстрее с каждым сектором
+            speed: 2 + state.sector * 0.2,
             wobble: Math.random() * Math.PI * 2
         });
     }
@@ -151,34 +155,46 @@ function updateUI() {
     ui.progress.innerText = `${state.debrisCollected} / ${getDebrisNeeded()}`;
     ui.coins.innerText = state.coins;
     ui.capacity.innerText = `${player.inventory} / ${player.maxCapacity}`;
+    ui.dronesCount.innerText = `${state.activeDrones} / 3`;
 
     // HP
     const hpPercent = Math.max(0, (player.hp / player.maxHp) * 100);
     ui.hpFill.style.width = hpPercent + '%';
+    ui.hpText.innerText = `❤️ ${player.hp}/${player.maxHp}`;
 
-    // Кнопки
-    ui.upgradeSpeedBtn.innerText = `Скорость (${costs.speed(state.speedLevel)})`;
-    ui.upgradeCapBtn.innerText = `Трюм (${costs.capacity(state.capacityLevel)})`;
-    ui.upgradeMagnetBtn.innerText = `Магнит (${costs.magnet(state.magnetLevel)})`;
-    ui.upgradeDroneBtn.innerText = state.droneLevel === 0 ? `Купить Дрона (${costs.drone(0)})` : `Дрон ур.${state.droneLevel} (MAX)`;
+    // Кнопки магазина
+    ui.upgradeSpeedBtn.innerText = `Улучшить (${costs.speed(state.speedLevel)}$)`;
+    ui.upgradeCapBtn.innerText = `Улучшить (${costs.capacity(state.capacityLevel)}$)`;
+    ui.upgradeMagnetBtn.innerText = `Улучшить (${costs.magnet(state.magnetLevel)}$)`;
 
     ui.upgradeSpeedBtn.disabled = state.coins < costs.speed(state.speedLevel);
     ui.upgradeCapBtn.disabled = state.coins < costs.capacity(state.capacityLevel);
     ui.upgradeMagnetBtn.disabled = state.coins < costs.magnet(state.magnetLevel);
-    ui.upgradeDroneBtn.disabled = state.droneLevel > 0 || state.coins < costs.drone(0);
+    ui.buyDroneBtn.disabled = state.coins < costs.drone() || state.activeDrones >= 3;
 }
 
 function showFloatingText(text, x, y, color) {
     floatingTexts.push({ text, x, y, color, life: 1.0 });
 }
 
+function createExplosion(x, y, color) {
+    for(let i=0; i<10; i++) {
+        explosions.push({
+            x: x, y: y,
+            vx: (Math.random() - 0.5) * 10,
+            vy: (Math.random() - 0.5) * 10,
+            life: 1.0,
+            color: color
+        });
+    }
+}
+
 function takeDamage() {
     if (player.invulnerableTime > 0) return;
 
     player.hp -= 25;
-    player.invulnerableTime = 60; // 1 секунда при 60fps
+    player.invulnerableTime = 60;
 
-    // Эффект вспышки
     ui.damageFlash.style.opacity = '1';
     setTimeout(() => { ui.damageFlash.style.opacity = '0'; }, 100);
 
@@ -193,8 +209,8 @@ function takeDamage() {
 function update() {
     if (gameState !== 'PLAYING') return;
 
-    // Вращение базы
     base.rotation += 0.005;
+    orbitAngle += 0.05;
 
     // Движение НЛО
     const dx = target.x - player.x;
@@ -208,15 +224,7 @@ function update() {
 
     if (player.invulnerableTime > 0) player.invulnerableTime--;
 
-    // Обновление дрона
-    let droneX = player.x, droneY = player.y;
-    if (state.droneLevel > 0) {
-        droneObj.angle += 0.05;
-        droneX = player.x + Math.cos(droneObj.angle) * droneObj.dist;
-        droneY = player.y + Math.sin(droneObj.angle) * droneObj.dist;
-    }
-
-    // Взаимодействие с мусором
+    // Взаимодействие с мусором (только магнит НЛО)
     for (let i = debrisList.length - 1; i >= 0; i--) {
         let d = debrisList[i];
         d.rotation += d.rotSpeed;
@@ -225,16 +233,11 @@ function update() {
         let ddy = player.y - d.y;
         let dDist = Math.hypot(ddx, ddy);
 
-        // Дрон тоже может притягивать
-        let drDist = state.droneLevel > 0 ? Math.hypot(droneX - d.x, droneY - d.y) : Infinity;
-
-        // Притягивание
-        if (player.inventory < player.maxCapacity) {
-            if (dDist < player.magnetRadius) d.pulled = 'player';
-            else if (drDist < player.magnetRadius / 2) d.pulled = 'drone';
+        if (player.inventory < player.maxCapacity && dDist < player.magnetRadius) {
+            d.pulled = true;
         }
 
-        if (d.pulled === 'player') {
+        if (d.pulled) {
             d.x += (ddx / dDist) * (player.speed * 2);
             d.y += (ddy / dDist) * (player.speed * 2);
             if (dDist < player.radius) {
@@ -242,21 +245,24 @@ function update() {
                 debrisList.splice(i, 1);
                 updateUI();
             }
-        } else if (d.pulled === 'drone') {
-            d.x += ((droneX - d.x) / drDist) * (player.speed * 2);
-            d.y += ((droneY - d.y) / drDist) * (player.speed * 2);
-            if (drDist < droneObj.radius) {
-                player.inventory++;
-                debrisList.splice(i, 1);
-                updateUI();
-            }
         }
+    }
+
+    // Позиции дронов-щитов
+    let dronePositions = [];
+    let orbitRadius = 60;
+    for (let i = 0; i < state.activeDrones; i++) {
+        let angle = orbitAngle + (Math.PI * 2 / state.activeDrones) * i;
+        dronePositions.push({
+            x: player.x + Math.cos(angle) * orbitRadius,
+            y: player.y + Math.sin(angle) * orbitRadius,
+            radius: 12
+        });
     }
 
     // Пираты
     for (let i = piratesList.length - 1; i >= 0; i--) {
         let p = piratesList[i];
-        // Пират летит к игроку
         let pdx = player.x - p.x;
         let pdy = player.y - p.y;
         let pDist = Math.hypot(pdx, pdy);
@@ -270,7 +276,29 @@ function update() {
             p.y += (pdy / pDist) * p.speed + wy;
         }
 
-        // Столкновение с игроком
+        let pirateHit = false;
+
+        // 1. Проверка столкновения с дронами
+        for (let j = 0; j < dronePositions.length; j++) {
+            let dp = dronePositions[j];
+            let drDist = Math.hypot(dp.x - p.x, dp.y - p.y);
+            if (drDist < dp.radius + p.radius) {
+                // Дрон уничтожает пирата ценой своей жизни
+                createExplosion(p.x, p.y, '#e53e3e'); // Взрыв пирата
+                createExplosion(dp.x, dp.y, '#00ffff'); // Взрыв дрона
+                showFloatingText("ЩИТ СРАБОТАЛ!", p.x, p.y, '#00ffff');
+
+                state.activeDrones--;
+                piratesList.splice(i, 1);
+                pirateHit = true;
+                updateUI();
+                break; // Выходим из цикла дронов для этого пирата
+            }
+        }
+
+        if (pirateHit) continue; // Если пират уничтожен, пропускаем проверку НЛО
+
+        // 2. Проверка столкновения с НЛО
         if (pDist < player.radius + p.radius) {
             takeDamage();
             // Отбрасываем пирата
@@ -293,33 +321,33 @@ function update() {
         saveProgress();
         updateUI();
 
-        // Проверка завершения сектора
         if (state.debrisCollected >= getDebrisNeeded()) {
             gameState = 'PAUSED';
             ui.overlayScreen.classList.remove('hidden');
         }
     }
 
-    // Анимация текста
+    // Анимации
     for (let i = floatingTexts.length - 1; i >= 0; i--) {
         floatingTexts[i].y -= 1;
         floatingTexts[i].life -= 0.02;
         if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
     }
+
+    for (let i = explosions.length - 1; i >= 0; i--) {
+        explosions[i].x += explosions[i].vx;
+        explosions[i].y += explosions[i].vy;
+        explosions[i].life -= 0.05;
+        if (explosions[i].life <= 0) explosions.splice(i, 1);
+    }
 }
 
-// --- ОТРИСОВКА СПРАЙТОВ (КАНВАС) ---
-
+// --- ОТРИСОВКА ---
 function drawPlayer(x, y, isInvulnerable) {
     ctx.save();
     ctx.translate(x, y);
+    if (isInvulnerable && Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
 
-    // Мигание при неуязвимости
-    if (isInvulnerable && Math.floor(Date.now() / 100) % 2 === 0) {
-        ctx.globalAlpha = 0.5;
-    }
-
-    // Свечение двигателя
     ctx.beginPath();
     ctx.arc(0, 5, 15, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0, 255, 255, 0.5)';
@@ -327,7 +355,6 @@ function drawPlayer(x, y, isInvulnerable) {
     ctx.fill();
     ctx.filter = 'none';
 
-    // Тело тарелки
     ctx.beginPath();
     ctx.ellipse(0, 0, 22, 10, 0, 0, Math.PI * 2);
     ctx.fillStyle = '#aaa';
@@ -336,13 +363,11 @@ function drawPlayer(x, y, isInvulnerable) {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Кабина
     ctx.beginPath();
     ctx.arc(0, -5, 10, Math.PI, 0);
     ctx.fillStyle = 'rgba(0, 255, 255, 0.7)';
     ctx.fill();
     ctx.stroke();
-
     ctx.restore();
 }
 
@@ -351,7 +376,6 @@ function drawBase(x, y, rot) {
     ctx.translate(x, y);
     ctx.rotate(rot);
 
-    // Панели
     ctx.fillStyle = '#1a365d';
     ctx.strokeStyle = '#00ffff';
     ctx.lineWidth = 2;
@@ -359,29 +383,24 @@ function drawBase(x, y, rot) {
         ctx.rotate(Math.PI/2);
         ctx.fillRect(-20, -75, 40, 50);
         ctx.strokeRect(-20, -75, 40, 50);
-        // Линии на панелях
         ctx.beginPath();
         ctx.moveTo(-10, -75); ctx.lineTo(-10, -25);
         ctx.moveTo(10, -75); ctx.lineTo(10, -25);
         ctx.stroke();
     }
 
-    // Центральный хаб
     ctx.beginPath();
     ctx.arc(0, 0, 30, 0, Math.PI * 2);
     ctx.fillStyle = '#2d3748';
     ctx.fill();
     ctx.stroke();
 
-    // Внутреннее свечение
     ctx.beginPath();
     ctx.arc(0, 0, 15, 0, Math.PI * 2);
     ctx.fillStyle = '#ff00ff';
     ctx.fill();
-
     ctx.restore();
 
-    // Текст поверх базы
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
@@ -391,22 +410,17 @@ function drawBase(x, y, rot) {
 function drawPirate(x, y, pX, pY) {
     ctx.save();
     ctx.translate(x, y);
-    // Поворот к игроку
     let angle = Math.atan2(pY - y, pX - x);
     ctx.rotate(angle);
 
     ctx.beginPath();
-    ctx.moveTo(15, 0);
-    ctx.lineTo(-10, 10);
-    ctx.lineTo(-5, 0);
-    ctx.lineTo(-10, -10);
+    ctx.moveTo(15, 0); ctx.lineTo(-10, 10); ctx.lineTo(-5, 0); ctx.lineTo(-10, -10);
     ctx.closePath();
     ctx.fillStyle = '#e53e3e';
     ctx.fill();
     ctx.strokeStyle = '#fff';
     ctx.lineWidth = 1;
     ctx.stroke();
-
     ctx.restore();
 }
 
@@ -416,11 +430,11 @@ function drawDebris(d) {
     ctx.rotate(d.rotation);
 
     ctx.beginPath();
-    if (d.type === 0) { // Треугольный
+    if (d.type === 0) {
         ctx.moveTo(0, -d.radius); ctx.lineTo(d.radius, d.radius); ctx.lineTo(-d.radius, d.radius);
-    } else if (d.type === 1) { // Квадратный
+    } else if (d.type === 1) {
         ctx.rect(-d.radius, -d.radius, d.radius*2, d.radius*2);
-    } else { // Многоугольник
+    } else {
         for (let i = 0; i < 5; i++) {
             ctx.lineTo(Math.cos(i * 1.25) * d.radius, Math.sin(i * 1.25) * d.radius);
         }
@@ -430,39 +444,39 @@ function drawDebris(d) {
     ctx.fill();
     ctx.strokeStyle = '#718096';
     ctx.stroke();
-
     ctx.restore();
 }
 
 function drawDrone(x, y, rot) {
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(rot * 2);
+    ctx.rotate(rot); // Дрон вращается вокруг своей оси для красоты
 
+    // Энергетический щит вокруг дрона
+    ctx.beginPath();
+    ctx.arc(0, 0, 12, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 255, 255, 0.2)';
+    ctx.fill();
+
+    // Ядро дрона
     ctx.beginPath();
     ctx.arc(0, 0, 6, 0, Math.PI * 2);
-    ctx.fillStyle = '#edf2f7';
+    ctx.fillStyle = '#00ffff';
     ctx.fill();
-    ctx.stroke();
 
-    // Антенны
+    // Орбитальные кольца дрона
     ctx.beginPath();
-    ctx.moveTo(0, -6); ctx.lineTo(0, -12);
-    ctx.moveTo(-5, 3); ctx.lineTo(-10, 6);
-    ctx.moveTo(5, 3); ctx.lineTo(10, 6);
-    ctx.strokeStyle = '#00ffff';
+    ctx.ellipse(0, 0, 14, 4, 0, 0, Math.PI*2);
+    ctx.strokeStyle = '#fff';
     ctx.stroke();
 
     ctx.restore();
 }
 
-// --- ОТРИСОВКА ---
 function draw() {
-    // Фон
     ctx.fillStyle = '#0b0c10';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Звезды (простые точки)
     ctx.fillStyle = '#fff';
     for(let i=0; i<20; i++) {
         let sx = (i * 137) % canvas.width;
@@ -471,22 +485,49 @@ function draw() {
     }
 
     drawBase(base.x, base.y, base.rotation);
-
     debrisList.forEach(drawDebris);
-
     piratesList.forEach(p => drawPirate(p.x, p.y, player.x, player.y));
 
-    if (state.droneLevel > 0) {
-        let droneX = player.x + Math.cos(droneObj.angle) * droneObj.dist;
-        let droneY = player.y + Math.sin(droneObj.angle) * droneObj.dist;
-        drawDrone(droneX, droneY, droneObj.angle);
+    // Отрисовка дронов на орбите
+    let orbitRadius = 60;
+    for (let i = 0; i < state.activeDrones; i++) {
+        let angle = orbitAngle + (Math.PI * 2 / state.activeDrones) * i;
+        let dx = player.x + Math.cos(angle) * orbitRadius;
+        let dy = player.y + Math.sin(angle) * orbitRadius;
+
+        // Линия связи с НЛО
+        ctx.beginPath();
+        ctx.moveTo(player.x, player.y);
+        ctx.lineTo(dx, dy);
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        drawDrone(dx, dy, orbitAngle * 2);
     }
 
     if (player.hp > 0) {
+        // Радиус магнита
+        if (player.inventory < player.maxCapacity) {
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.magnetRadius, 0, Math.PI*2);
+            ctx.strokeStyle = 'rgba(0, 255, 255, 0.05)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
         drawPlayer(player.x, player.y, player.invulnerableTime > 0);
     }
 
-    // Плавающий текст
+    // Эффекты
+    explosions.forEach(e => {
+        ctx.fillStyle = e.color;
+        ctx.globalAlpha = Math.max(0, e.life);
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, 3, 0, Math.PI*2);
+        ctx.fill();
+    });
+    ctx.globalAlpha = 1.0;
+
     floatingTexts.forEach(t => {
         ctx.fillStyle = t.color;
         ctx.globalAlpha = t.life;
@@ -503,30 +544,48 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// --- ВЗАИМОДЕЙСТВИЕ И СОХРАНЕНИЕ ---
+// --- ВЗАИМОДЕЙСТВИЕ И МАГАЗИН ---
 function saveProgress() {
-    if (playerSDK) {
-        playerSDK.setData(state).catch(err => console.log('Save Error', err));
+    if (playerSDK) playerSDK.setData(state).catch(e => console.log('Save Error', e));
+}
+
+ui.openShopBtn.onclick = () => {
+    gameState = 'PAUSED';
+    updateUI();
+    ui.shopModal.classList.remove('hidden');
+};
+
+ui.closeShopBtn.onclick = () => {
+    gameState = 'PLAYING';
+    // Сбрасываем цель курсора, чтобы НЛО не прыгнуло
+    target.x = player.x; target.y = player.y;
+    ui.shopModal.classList.add('hidden');
+};
+
+function buyUpgrade(type) {
+    if (type === 'drone') {
+        if (state.coins >= costs.drone() && state.activeDrones < 3) {
+            state.coins -= costs.drone();
+            state.activeDrones++;
+            saveProgress();
+            updateUI();
+        }
+    } else {
+        const cost = costs[type](state[type + 'Level']);
+        if (state.coins >= cost) {
+            state.coins -= cost;
+            state[type + 'Level']++;
+            saveProgress();
+            updateUI();
+        }
     }
 }
 
-// Обработчики кнопок апгрейдов
-function buyUpgrade(type) {
-    const cost = costs[type](state[type + 'Level']);
-    if (state.coins >= cost) {
-        if (type === 'drone' && state.droneLevel >= 1) return; // Только 1 дрон
-        state.coins -= cost;
-        state[type + 'Level']++;
-        saveProgress();
-        updateUI();
-    }
-}
+ui.buyDroneBtn.onclick = () => buyUpgrade('drone');
 ui.upgradeSpeedBtn.onclick = () => buyUpgrade('speed');
 ui.upgradeCapBtn.onclick = () => buyUpgrade('capacity');
 ui.upgradeMagnetBtn.onclick = () => buyUpgrade('magnet');
-ui.upgradeDroneBtn.onclick = () => buyUpgrade('drone');
 
-// Переход на следующий сектор
 function nextSector() {
     state.sector++;
     state.debrisCollected = 0;
@@ -542,29 +601,23 @@ function nextSector() {
 ui.nextSectorBtn.onclick = () => {
     if (ys) {
         ys.adv.showFullscreenAdv({
-            callbacks: {
-                onClose: nextSector,
-                onError: nextSector
-            }
+            callbacks: { onClose: nextSector, onError: nextSector }
         });
     } else {
         nextSector();
     }
 };
 
-// Воскрешение
 function resetToMenu() {
     state.sector = 1;
     state.debrisCollected = 0;
-    state.coins = Math.floor(state.coins / 2); // Штраф
-    debrisList = [];
-    piratesList = [];
+    state.coins = Math.floor(state.coins / 2);
+    state.activeDrones = 0;
+    debrisList = []; piratesList = [];
     player.hp = player.maxHp;
-    saveProgress();
-    updateUI();
+    saveProgress(); updateUI();
     gameState = 'PLAYING';
     ui.reviveScreen.classList.add('hidden');
-    // Ставим игрока на базу
     player.x = base.x; player.y = base.y + 100;
     target.x = player.x; target.y = player.y;
 }
@@ -575,23 +628,17 @@ ui.reviveBtn.onclick = () => {
             callbacks: {
                 onRewarded: () => {
                     player.hp = player.maxHp;
-                    player.invulnerableTime = 180; // 3 секунды бессмертия после возрождения
-                    piratesList = []; // Очищаем пиратов рядом
-                    updateUI();
-                    gameState = 'PLAYING';
+                    player.invulnerableTime = 180;
+                    piratesList = [];
+                    updateUI(); gameState = 'PLAYING';
                     ui.reviveScreen.classList.add('hidden');
                 },
                 onError: resetToMenu
             }
         });
     } else {
-        // Для теста локально
-        player.hp = player.maxHp;
-        player.invulnerableTime = 180;
-        piratesList = [];
-        updateUI();
-        gameState = 'PLAYING';
-        ui.reviveScreen.classList.add('hidden');
+        player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = [];
+        updateUI(); gameState = 'PLAYING'; ui.reviveScreen.classList.add('hidden');
     }
 };
 
@@ -608,9 +655,7 @@ if (typeof YaGames !== 'undefined') {
         ys.getPlayer({ scopes: false }).then(_player => {
             playerSDK = _player;
             playerSDK.getData().then(data => {
-                if (data && data.sector) {
-                    state = { ...state, ...data };
-                }
+                if (data && data.sector) state = { ...state, ...data };
                 updateUI();
             }).catch(e => console.log('Load error', e));
         }).catch(e => console.log('Auth error', e));

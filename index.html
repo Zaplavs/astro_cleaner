@@ -3,40 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Астро-Уборщик 2.0</title>
+    <title>Астро-Уборщик 3.0</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://yandex.ru/games/sdk/v2"></script>
 </head>
 <body>
     <div id="damageFlash"></div>
 
-    <div id="ui">
-        <div class="top-bar">
-            <div class="stat-group">
-                <div class="stat">Сектор: <span id="level">1</span></div>
-                <div class="stat">Прогресс: <span id="progress">0 / 50</span></div>
-            </div>
-            <div class="stat-group center">
-                <div class="stat hp-bar-container">
-                    HP: <div class="hp-bar"><div class="hp-fill" id="hpFill"></div></div>
+    <!-- HUD -->
+    <div id="hud">
+        <div class="hud-top">
+            <div class="hud-left">
+                <div class="stat-box hp-box">
+                    <span id="hpText">❤️ 100/100</span>
+                    <div class="hp-bar-bg"><div id="hpFill" class="hp-bar-fill"></div></div>
                 </div>
+                <div class="stat-box">🛡️ Дроны: <span id="dronesCount">0 / 3</span></div>
+                <div class="stat-box">📦 Трюм: <span id="capacity">0 / 10</span></div>
             </div>
-            <div class="stat-group right">
-                <div class="stat gold">Монеты: <span id="coins">0</span>$</div>
-                <div class="stat">Трюм: <span id="capacity">0 / 10</span></div>
+
+            <div class="hud-center">
+                <div class="sector-display">Сектор: <span id="level">1</span></div>
+                <div class="progress-text">Мусор: <span id="progress">0 / 50</span></div>
+            </div>
+
+            <div class="hud-right">
+                <div class="stat-box gold">💰 <span id="coins">0</span>$</div>
+                <button id="openShopBtn" class="hud-btn">🛒 МАГАЗИН</button>
             </div>
         </div>
+    </div>
 
-        <div class="bottom-bar">
-            <button id="upgradeSpeedBtn">Скорость (50)</button>
-            <button id="upgradeCapBtn">Трюм (50)</button>
-            <button id="upgradeMagnetBtn">Магнит (100)</button>
-            <button id="upgradeDroneBtn">Дрон (200)</button>
+    <!-- Внутриигровой магазин (Модальное окно) -->
+    <div id="shopModal" class="hidden modal-overlay">
+        <div class="modal shop-window">
+            <h2>ОРБИТАЛЬНАЯ СТАНЦИЯ</h2>
+            <div class="shop-items">
+                <div class="shop-item">
+                    <div class="item-info">
+                        <h3>Дрон-Щит</h3>
+                        <p>Летает по орбите, уничтожает 1 пирата.</p>
+                    </div>
+                    <button id="buyDroneBtn" class="buy-btn">Купить (200$)</button>
+                </div>
+
+                <div class="shop-item">
+                    <div class="item-info">
+                        <h3>Отсек Трюма</h3>
+                        <p>Вмещает больше мусора за рейс.</p>
+                    </div>
+                    <button id="upgradeCapBtn" class="buy-btn">Улучшить (50$)</button>
+                </div>
+
+                <div class="shop-item">
+                    <div class="item-info">
+                        <h3>Электромагнит</h3>
+                        <p>Увеличивает радиус захвата мусора.</p>
+                    </div>
+                    <button id="upgradeMagnetBtn" class="buy-btn">Улучшить (100$)</button>
+                </div>
+
+                <div class="shop-item">
+                    <div class="item-info">
+                        <h3>Двигатель</h3>
+                        <p>Увеличивает скорость полета НЛО.</p>
+                    </div>
+                    <button id="upgradeSpeedBtn" class="buy-btn">Улучшить (50$)</button>
+                </div>
+            </div>
+            <button id="closeShopBtn" class="close-btn">Вернуться в космос</button>
         </div>
     </div>
 
     <!-- Экраны состояний -->
-    <div id="overlayScreen" class="hidden">
+    <div id="overlayScreen" class="hidden modal-overlay">
         <div class="modal">
             <h1 id="overlayTitle">СЕКТОР ЗАЧИЩЕН</h1>
             <p id="overlayText">Вы собрали весь мусор!</p>
@@ -46,7 +86,7 @@
         </div>
     </div>
 
-    <div id="reviveScreen" class="hidden">
+    <div id="reviveScreen" class="hidden modal-overlay">
         <div class="modal">
             <h1>КОРАБЛЬ РАЗРУШЕН</h1>
             <p>Вас подбили пираты. Восстановить корабль за рекламу?</p>
