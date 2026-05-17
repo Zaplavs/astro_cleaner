@@ -390,6 +390,11 @@ function update() {
     const dx = target.x - player.x; const dy = target.y - player.y;
     const dist = Math.hypot(dx, dy);
     if (dist > currentSpeed) { player.x += (dx / dist) * currentSpeed; player.y += (dy / dist) * currentSpeed; }
+
+    // Ограничение движения границами карты (-3000 до 3000)
+    player.x = Math.max(-2980, Math.min(2980, player.x));
+    player.y = Math.max(-2980, Math.min(2980, player.y));
+
     if (player.invulnerableTime > 0) player.invulnerableTime--;
 
     // Мусор
@@ -436,6 +441,8 @@ function update() {
             // push player
             player.x -= (player.x - m.x) * 0.5;
             player.y -= (player.y - m.y) * 0.5;
+            player.x = Math.max(-2980, Math.min(2980, player.x));
+            player.y = Math.max(-2980, Math.min(2980, player.y));
             target.x = player.x; target.y = player.y;
         }
     }
@@ -477,7 +484,10 @@ function update() {
             takeDamage(10);
             createExplosion(a.x, a.y, '#a0aec0', 5);
             // Отброс игрока и астероида
-            player.x -= a.vx * 10; player.y -= a.vy * 10; target.x = player.x; target.y = player.y;
+            player.x -= a.vx * 10; player.y -= a.vy * 10;
+            player.x = Math.max(-2980, Math.min(2980, player.x));
+            player.y = Math.max(-2980, Math.min(2980, player.y));
+            target.x = player.x; target.y = player.y;
             a.vx *= -1; a.vy *= -1;
         }
     }
