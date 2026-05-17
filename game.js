@@ -710,9 +710,19 @@ function buyUpgrade(type) {
 
 ui.buyDroneBtn.onclick = () => buyUpgrade('drone'); ui.upgradeHpBtn.onclick = () => buyUpgrade('hp'); ui.upgradeProfitBtn.onclick = () => buyUpgrade('profit'); ui.upgradeSpeedBtn.onclick = () => buyUpgrade('speed'); ui.upgradeCapBtn.onclick = () => buyUpgrade('capacity'); ui.upgradeMagnetBtn.onclick = () => buyUpgrade('magnet');
 
-ui.nextSectorBtn.onclick = () => { if (ys) { ys.adv.showFullscreenAdv({ callbacks: { onClose: () => showScreen('SECTORS'), onError: () => showScreen('SECTORS') } }); } else { showScreen('SECTORS'); } };
-ui.reviveBtn.onclick = () => { if (ys) { ys.adv.showRewardedVideo({ callbacks: { onRewarded: () => { player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = []; minesList = []; asteroidsList = []; debrisList = []; updateUI(); showScreen('GAME'); }, onError: () => showScreen('SECTORS') } }); } else { player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = []; minesList = []; asteroidsList = []; debrisList = []; updateUI(); showScreen('GAME'); } };
+ui.nextSectorBtn.onclick = () => { if (ys) { ys.adv.showFullscreenAdv({ callbacks: { onOpen: () => { window.adPlaying = true; audio.muted = true; }, onClose: () => { window.adPlaying = false; audio.muted = state.muted; showScreen('SECTORS'); }, onError: () => { window.adPlaying = false; audio.muted = state.muted; showScreen('SECTORS'); } } }); } else { showScreen('SECTORS'); } };
+ui.reviveBtn.onclick = () => { if (ys) { ys.adv.showRewardedVideo({ callbacks: { onOpen: () => { window.adPlaying = true; audio.muted = true; }, onRewarded: () => { window.adPlaying = false; audio.muted = state.muted; player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = []; minesList = []; asteroidsList = []; debrisList = []; updateUI(); showScreen('GAME'); }, onClose: () => { window.adPlaying = false; audio.muted = state.muted; }, onError: () => { window.adPlaying = false; audio.muted = state.muted; showScreen('SECTORS'); } } }); } else { player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = []; minesList = []; asteroidsList = []; debrisList = []; updateUI(); showScreen('GAME'); } };
 ui.restartBtn.onclick = () => showScreen('SECTORS');
+
+// События вкладки (пауза звука/игры вне вкладки)
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+        audio.muted = true;
+        if (gameState === 'PLAYING') { gameState = 'PAUSED'; ui.hud.classList.add('hidden'); ui.shopModal.classList.remove('hidden'); }
+    } else {
+        if (!window.adPlaying) audio.muted = state.muted;
+    }
+});
 
 // --- СТАРТ И YANDEX SDK ---
 showScreen('MAIN'); gameLoop();
