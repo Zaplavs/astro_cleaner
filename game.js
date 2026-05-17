@@ -74,6 +74,7 @@ const player = {
     get profitMult() { return 1 + (state.profitLevel - 1) * 0.5; }
 };
 
+let camera = { x: 0, y: 0 };
 let target = { x: player.x, y: player.y };
 const base = { x: 0, y: 0, radius: 80, rotation: 0 };
 
@@ -90,7 +91,7 @@ function getAsteroidCount() { return currentSector >= 3 ? Math.min(Math.floor(cu
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; base.x = canvas.width / 2; base.y = canvas.height / 2; }
 window.addEventListener('resize', resize); resize();
 
-function setTarget(x, y) { if (gameState === 'PLAYING') { target.x = x; target.y = y; } }
+function setTarget(x, y) { if (gameState === 'PLAYING') { target.x = x + camera.x; target.y = y + camera.y; } }
 window.addEventListener('mousemove', (e) => setTarget(e.clientX, e.clientY));
 window.addEventListener('touchmove', (e) => setTarget(e.touches[0].clientX, e.touches[0].clientY));
 window.addEventListener('touchstart', (e) => setTarget(e.touches[0].clientX, e.touches[0].clientY));
@@ -120,6 +121,7 @@ function buildSectorGrid() {
 // --- СПАВНЕРЫ ---
 function spawnDebris() {
     if (gameState !== 'PLAYING') return;
+
     const maxDebris = 15 + currentSector * 5;
     if (debrisList.length < maxDebris) {
         let x, y, dDist;
@@ -147,10 +149,10 @@ function spawnHazards() {
     if (piratesList.length < getPirateCount()) {
         let side = Math.floor(Math.random() * 4);
         let px, py;
-        if (side === 0) { px = Math.random() * canvas.width; py = -50; }
-        else if (side === 1) { px = canvas.width + 50; py = Math.random() * canvas.height; }
-        else if (side === 2) { px = Math.random() * canvas.width; py = canvas.height + 50; }
-        else { px = -50; py = Math.random() * canvas.height; }
+        if (side === 0) { px = camera.x + Math.random() * canvas.width; py = camera.y - 50; }
+        else if (side === 1) { px = camera.x + canvas.width + 50; py = camera.y + Math.random() * canvas.height; }
+        else if (side === 2) { px = camera.x + Math.random() * canvas.width; py = camera.y + canvas.height + 50; }
+        else { px = camera.x - 50; py = camera.y + Math.random() * canvas.height; }
 
         let type = 'normal';
         let speedMult = 1;
@@ -178,10 +180,10 @@ function spawnHazards() {
     if (currentSector >= 3 && asteroidsList.length < getAsteroidCount()) {
         let side = Math.floor(Math.random() * 4);
         let px, py;
-        if (side === 0) { px = Math.random() * canvas.width; py = -50; }
-        else if (side === 1) { px = canvas.width + 50; py = Math.random() * canvas.height; }
-        else if (side === 2) { px = Math.random() * canvas.width; py = canvas.height + 50; }
-        else { px = -50; py = Math.random() * canvas.height; }
+        if (side === 0) { px = camera.x + Math.random() * canvas.width; py = camera.y - 50; }
+        else if (side === 1) { px = camera.x + canvas.width + 50; py = camera.y + Math.random() * canvas.height; }
+        else if (side === 2) { px = camera.x + Math.random() * canvas.width; py = camera.y + canvas.height + 50; }
+        else { px = camera.x - 50; py = camera.y + Math.random() * canvas.height; }
 
         let angle = Math.random() * Math.PI * 2;
         let speed = 1 + Math.random() * 2;
@@ -242,6 +244,9 @@ function takeDamage(amount = 25) {
 
 function update() {
     if (gameState !== 'PLAYING') return;
+
+    camera.x = player.x - canvas.width / 2;
+    camera.y = player.y - canvas.height / 2;
 
     base.rotation += 0.005; orbitAngle += 0.05;
 
@@ -310,8 +315,8 @@ function update() {
         a.x += a.vx; a.y += a.vy; a.rotation += a.rotSpeed;
 
         // Отскок от краев виртуального поля (чтобы не улетали бесконечно)
-        if (a.x < -1000 || a.x > canvas.width + 1000) a.vx *= -1;
-        if (a.y < -1000 || a.y > canvas.height + 1000) a.vy *= -1;
+        if (a.x < camera.x - 1000 || a.x > camera.x + canvas.width + 1000) a.vx *= -1;
+        if (a.y < camera.y - 1000 || a.y > camera.y + canvas.height + 1000) a.vy *= -1;
 
         let aDist = Math.hypot(player.x - a.x, player.y - a.y);
         if (aDist < player.radius + a.radius) {
@@ -427,9 +432,29 @@ function drawDrone(x, y, rot) {
 
 function draw() {
     ctx.fillStyle = '#0b0c10'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#fff'; for(let i=0; i<20; i++) { let sx = (i * 137) % canvas.width; let sy = (i * 251 + base.rotation * 100) % canvas.height; ctx.fillRect(sx, sy, 1, 1); }
 
-    if (gameState === 'MENU' || gameState === 'SECTOR_SELECT') { base.rotation += 0.002; drawBase(base.x, base.y, base.rotation); return; }
+    ctx.save();
+    if (gameState === 'PLAYING') {
+        ctx.translate(-camera.x, -camera.y);
+    }
+
+    ctx.fillStyle = '#fff'; for(let i=0; i<200; i++) {
+        // Parallax stars
+        let sx = ((i * 137) + (gameState === 'PLAYING' ? camera.x * 0.5 : 0)) % 2000 - 500;
+        let sy = ((i * 251 + base.rotation * 100) + (gameState === 'PLAYING' ? camera.y * 0.5 : 0)) % 2000 - 500;
+
+        // Let's just draw static stars scattered over a huge area, the camera translation will handle movement naturally.
+        let starX = (i * 1377) % 6000 - 3000;
+        let starY = (i * 2513) % 6000 - 3000;
+        ctx.fillRect(starX, starY, 2, 2);
+    }
+
+    // Grid bounds indicator (optional)
+    ctx.strokeStyle = '#222';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(-3000, -3000, 6000, 6000);
+
+if (gameState === 'MENU' || gameState === 'SECTOR_SELECT') { base.rotation += 0.002; drawBase(base.x, base.y, base.rotation); ctx.restore(); return; }
 
     drawBase(base.x, base.y, base.rotation);
     asteroidsList.forEach(drawAsteroid);
@@ -449,10 +474,46 @@ function draw() {
             ctx.beginPath(); ctx.arc(player.x, player.y, player.magnetRadius, 0, Math.PI*2); ctx.strokeStyle = 'rgba(0, 255, 255, 0.05)'; ctx.lineWidth = 2; ctx.stroke();
         }
         drawPlayer(player.x, player.y, player.invulnerableTime > 0);
+
+    // Draw Base Pointer
+    if (gameState === 'PLAYING') {
+        let dx = base.x - player.x;
+        let dy = base.y - player.y;
+        let dist = Math.hypot(dx, dy);
+
+        // If the base is far enough to be offscreen
+        if (dist > canvas.width / 2 || dist > canvas.height / 2) {
+            let angle = Math.atan2(dy, dx);
+            let arrowDist = 80; // Distance from player
+            let arrowX = player.x + Math.cos(angle) * arrowDist;
+            let arrowY = player.y + Math.sin(angle) * arrowDist;
+
+            ctx.save();
+            ctx.translate(arrowX, arrowY);
+            ctx.rotate(angle);
+            ctx.fillStyle = player.inventory > 0 ? '#00ff00' : '#888'; // Green if we have cargo
+            ctx.beginPath();
+            ctx.moveTo(10, 0);
+            ctx.lineTo(-10, -10);
+            ctx.lineTo(-5, 0);
+            ctx.lineTo(-10, 10);
+            ctx.closePath();
+            ctx.fill();
+
+            // Add a glowing effect
+            ctx.shadowColor = player.inventory > 0 ? '#00ff00' : '#888';
+            ctx.shadowBlur = 10;
+            ctx.fill();
+
+            ctx.restore();
+        }
+    }
+
     }
 
     explosions.forEach(e => { ctx.fillStyle = e.color; ctx.globalAlpha = Math.max(0, e.life); ctx.beginPath(); ctx.arc(e.x, e.y, 3, 0, Math.PI*2); ctx.fill(); }); ctx.globalAlpha = 1.0;
     floatingTexts.forEach(t => { ctx.fillStyle = t.color; ctx.globalAlpha = t.life; ctx.font = 'bold 20px Arial'; ctx.textAlign = 'center'; ctx.fillText(t.text, t.x, t.y); }); ctx.globalAlpha = 1.0;
+    if (gameState === 'PLAYING') ctx.restore();
 }
 
 function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
