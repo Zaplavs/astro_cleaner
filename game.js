@@ -75,6 +75,7 @@ const player = {
 };
 
 let camera = { x: 0, y: 0 };
+let pointer = { x: canvas.width / 2, y: canvas.height / 2 };
 let target = { x: player.x, y: player.y };
 const base = { x: 0, y: 0, radius: 80, rotation: 0 };
 
@@ -91,7 +92,7 @@ function getAsteroidCount() { return currentSector >= 3 ? Math.min(Math.floor(cu
 function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; base.x = canvas.width / 2; base.y = canvas.height / 2; }
 window.addEventListener('resize', resize); resize();
 
-function setTarget(x, y) { if (gameState === 'PLAYING') { target.x = x + camera.x; target.y = y + camera.y; } }
+function setTarget(x, y) { if (gameState === 'PLAYING') { pointer.x = x; pointer.y = y; } }
 window.addEventListener('mousemove', (e) => setTarget(e.clientX, e.clientY));
 window.addEventListener('touchmove', (e) => setTarget(e.touches[0].clientX, e.touches[0].clientY));
 window.addEventListener('touchstart', (e) => setTarget(e.touches[0].clientX, e.touches[0].clientY));
@@ -126,7 +127,7 @@ function spawnDebris() {
     if (debrisList.length < maxDebris) {
         let x, y, dDist;
         do {
-            x = Math.random() * canvas.width; y = Math.random() * canvas.height;
+            x = camera.x + (Math.random() - 0.5) * canvas.width * 2 + canvas.width / 2; y = camera.y + (Math.random() - 0.5) * canvas.height * 2 + canvas.height / 2;
             dDist = Math.hypot(x - base.x, y - base.y);
         } while(dDist < base.radius + 50);
 
@@ -247,6 +248,10 @@ function update() {
 
     camera.x = player.x - canvas.width / 2;
     camera.y = player.y - canvas.height / 2;
+    if (gameState === 'PLAYING') {
+        target.x = pointer.x + camera.x;
+        target.y = pointer.y + camera.y;
+    }
 
     base.rotation += 0.005; orbitAngle += 0.05;
 
