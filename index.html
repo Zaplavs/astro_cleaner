@@ -50,6 +50,11 @@
             <div class="hud-center">
                 <div class="sector-display">Сектор: <span id="level">1</span></div>
                 <div class="progress-text">Мусор: <span id="progress">0 / 50</span></div>
+                <!-- Новый элемент: Динамическая тяга -->
+                <div class="thrust-container">
+                    <span>Тяга: <span id="thrustText">100%</span></span>
+                    <div class="thrust-bar-bg"><div id="thrustFill" class="thrust-bar-fill"></div></div>
+                </div>
             </div>
 
             <div class="hud-right">
@@ -108,7 +113,7 @@
                 <div class="shop-item">
                     <div class="item-info">
                         <h3>Двигатель</h3>
-                        <p>Увеличивает скорость полета НЛО.</p>
+                        <p>Увеличивает базовую скорость полета НЛО.</p>
                     </div>
                     <button id="upgradeSpeedBtn" class="buy-btn">Улучшить</button>
                 </div>
