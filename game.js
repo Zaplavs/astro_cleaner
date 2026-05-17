@@ -52,7 +52,7 @@ const ui = {
 
 // --- СОСТОЯНИЕ ИГРЫ (ОБЛАКО) ---
 let state = {
-    coins: 0, maxSector: 1, tutorialCompleted: false, muted: false,
+    coins: 0, metaCoins: 0, hasAdvancedShip: false, maxSector: 1, tutorialCompleted: false, muted: false,
     hpLevel: 1, profitLevel: 1, speedLevel: 1, capacityLevel: 1, magnetLevel: 1,
 };
 
@@ -67,10 +67,10 @@ let ys = null; let playerSDK = null;
 // --- ИГРОВЫЕ ОБЪЕКТЫ ---
 const player = {
     x: 0, y: 0, radius: 20, inventory: 0, hp: 100, invulnerableTime: 0,
-    get maxHp() { return 100 + (state.hpLevel - 1) * 25; },
-    get speed() { return 4 + state.speedLevel; },
-    get maxCapacity() { return 10 + state.capacityLevel * 5; },
-    get magnetRadius() { return 100 + state.magnetLevel * 30; },
+    get maxHp() { return (state.hasAdvancedShip ? 200 : 100) + (state.hpLevel - 1) * 25; },
+    get speed() { return (state.hasAdvancedShip ? 5 : 4) + (state.speedLevel - 1); },
+    get maxCapacity() { return (state.hasAdvancedShip ? 20 : 10) + (state.capacityLevel - 1) * 5; },
+    get magnetRadius() { return 100 + (state.magnetLevel - 1) * 30; },
     get profitMult() { return 1 + (state.profitLevel - 1) * 0.5; }
 };
 
@@ -79,7 +79,7 @@ let pointer = { x: canvas.width / 2, y: canvas.height / 2 };
 let target = { x: player.x, y: player.y };
 const base = { x: 0, y: 0, radius: 80, rotation: 0 };
 
-let debrisList = []; let piratesList = []; let asteroidsList = [];
+let debrisList = []; let piratesList = []; let asteroidsList = []; let minesList = [];
 let floatingTexts = []; let explosions = []; let orbitAngle = 0;
 
 // Баланс
@@ -160,20 +160,36 @@ function spawnHazards() {
         let hpMult = 1;
         let color = '#ff0044';
 
-        if (currentSector >= 3 && Math.random() < 0.3) {
+        let r = Math.random();
+        // Sector 30+: Bosses
+        if (currentSector >= 30 && Math.random() < 0.05) {
+            type = 'boss'; speedMult = 0.5; hpMult = 10; color = '#ffaa00';
+        }
+        // Sector 20+: Ghost
+        else if (currentSector >= 20 && Math.random() < 0.1) {
+            type = 'ghost'; speedMult = 1.2; hpMult = 0.8; color = 'rgba(255, 255, 255, 0.6)';
+        }
+        // Sector 10+: Elite
+        else if (currentSector >= 10 && Math.random() < 0.15) {
+            type = 'elite'; speedMult = 1.8; hpMult = 1.5; color = '#ff0000';
+        }
+        // Base variants
+        else if (currentSector >= 3 && r < 0.3) {
             type = 'fast'; speedMult = 1.5; hpMult = 0.5; color = '#ff00ff';
-        } else if (currentSector >= 4 && Math.random() < 0.2) {
+        } else if (currentSector >= 4 && r < 0.5) {
             type = 'tank'; speedMult = 0.6; hpMult = 2.5; color = '#880000';
         }
 
         piratesList.push({
-            x: px, y: py, radius: 18,
-            speed: (1.5 + currentSector * 0.2) * speedMult,
+            x: px, y: py,
+            radius: type === 'boss' ? 40 : 18,
+            speed: (1.5 + currentSector * 0.1) * speedMult,
             hp: (20 + currentSector * 10) * hpMult,
             maxHp: (20 + currentSector * 10) * hpMult,
             color: color,
             type: type,
-            wobble: Math.random() * Math.PI * 2
+            wobble: Math.random() * Math.PI * 2,
+            ghostTimer: 0
         });
     }
 
@@ -188,9 +204,20 @@ function spawnHazards() {
 
         let angle = Math.random() * Math.PI * 2;
         let speed = 1 + Math.random() * 2;
+        let radius = 25 + Math.random() * 20;
+
+        // Sector 5+: Comet
+        if (currentSector >= 5 && Math.random() < 0.2) {
+            speed *= 2.5;
+        }
+        // Sector 25+: Massive Asteroid
+        if (currentSector >= 25 && Math.random() < 0.1) {
+            radius *= 2.5;
+            speed *= 0.5;
+        }
 
         asteroidsList.push({
-            x: px, y: py, radius: 25 + Math.random() * 20,
+            x: px, y: py, radius: radius,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
             hp: 50 + currentSector * 10,
@@ -198,13 +225,51 @@ function spawnHazards() {
             rotSpeed: (Math.random() - 0.5) * 0.1
         });
     }
+
+    // Sector 15+: Space Mines
+    if (currentSector >= 15 && Math.random() < 0.3) {
+        if (!minesList) minesList = []; // Needs to be declared
+        if (minesList.length < 5) {
+             minesList.push({
+                 x: camera.x + (Math.random() - 0.5) * canvas.width * 2 + canvas.width / 2,
+                 y: camera.y + (Math.random() - 0.5) * canvas.height * 2 + canvas.height / 2,
+                 radius: 15,
+                 armed: false,
+                 timer: 0
+             });
+        }
+    }
 }
 setInterval(spawnHazards, 2000);
 
 // --- ЛОГИКА ---
+
+function resetRun() {
+    state.metaCoins += state.coins;
+    state.coins = 0;
+
+    // Reset player upgrades
+    state.hpLevel = 1;
+    state.speedLevel = 1;
+    state.capacityLevel = 1;
+    state.profitLevel = 1;
+    state.magnetLevel = 1;
+
+    player.hp = player.maxHp;
+    player.inventory = 0;
+    activeDrones = 0;
+
+    piratesList = []; minesList = []; asteroidsList = []; debrisList = [];
+    player.x = canvas.width / 2; player.y = canvas.height / 2;
+    camera.x = 0; camera.y = 0;
+    target.x = player.x; target.y = player.y; pointer.x = player.x; pointer.y = player.y;
+    saveProgress();
+    updateUI();
+}
+
 function updateUI() {
     ui.level.innerText = currentSector; ui.progress.innerText = `${debrisCollected} / ${getDebrisNeeded()}`;
-    ui.coins.innerText = state.coins; ui.capacity.innerText = `${player.inventory} / ${player.maxCapacity}`;
+    ui.coins.innerText = state.coins; if(!ui.metaCoins) ui.metaCoins = document.getElementById('metaCoins'); ui.metaCoins.innerText = state.metaCoins; ui.capacity.innerText = `${player.inventory} / ${player.maxCapacity}`;
     ui.dronesCount.innerText = `${activeDrones} / 3`;
 
     ui.hpFill.style.width = Math.max(0, (player.hp / player.maxHp) * 100) + '%';
@@ -223,6 +288,12 @@ function updateUI() {
     ui.upgradeHpBtn.disabled = state.coins < costs.hp(state.hpLevel); ui.upgradeProfitBtn.disabled = state.coins < costs.profit(state.profitLevel);
     ui.upgradeSpeedBtn.disabled = state.coins < costs.speed(state.speedLevel); ui.upgradeCapBtn.disabled = state.coins < costs.capacity(state.capacityLevel);
     ui.upgradeMagnetBtn.disabled = state.coins < costs.magnet(state.magnetLevel); ui.buyDroneBtn.disabled = state.coins < costs.drone() || activeDrones >= 3;
+
+    if(!ui.buyShipBtn) ui.buyShipBtn = document.getElementById('buyShipBtn');
+    if (ui.buyShipBtn) {
+        ui.buyShipBtn.disabled = state.metaCoins < 5000 || state.hasAdvancedShip;
+        ui.buyShipBtn.innerText = state.hasAdvancedShip ? 'КОРАБЛЬ КУПЛЕН' : 'Купить Продвинутый Корабль (Банк: 5000)';
+    }
 }
 
 function showTutorialText(text, timeMs = 0) {
@@ -293,17 +364,38 @@ function update() {
     }
 
     // Пираты
+
+    // Mines
+    for (let i = minesList.length - 1; i >= 0; i--) {
+        let m = minesList[i];
+        m.timer++;
+        if (m.timer > 60) m.armed = true; // 1 second to arm
+
+        let mDist = Math.hypot(player.x - m.x, player.y - m.y);
+        if (m.armed && mDist < player.radius + m.radius + 50) {
+            takeDamage(40);
+            createExplosion(m.x, m.y, '#ff4400', 20);
+            minesList.splice(i, 1);
+            // push player
+            player.x -= (player.x - m.x) * 0.5;
+            player.y -= (player.y - m.y) * 0.5;
+            target.x = player.x; target.y = player.y;
+        }
+    }
+
     for (let i = piratesList.length - 1; i >= 0; i--) {
         let p = piratesList[i]; let pdx = player.x - p.x; let pdy = player.y - p.y;
         let pDist = Math.hypot(pdx, pdy); p.wobble += 0.1;
         if (pDist > 0) { p.x += (pdx / pDist) * p.speed + Math.cos(p.wobble) * 2; p.y += (pdy / pDist) * p.speed + Math.sin(p.wobble) * 2; }
 
+        if (p.type === 'ghost') { p.ghostTimer++; if (p.ghostTimer % 120 === 0) p.color = p.color === 'rgba(255, 255, 255, 0.6)' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.6)'; }
         let pirateHit = false;
+        if (p.type === 'ghost' && p.color === 'rgba(255, 255, 255, 0.1)') continue; // Invulnerable while extremely transparent
         for (let j = 0; j < dronePositions.length; j++) {
             let dp = dronePositions[j];
             if (Math.hypot(dp.x - p.x, dp.y - p.y) < dp.radius + p.radius) {
                 createExplosion(dp.x, dp.y, '#00ffff'); showFloatingText("ЩИТ СРАБОТАЛ!", p.x, p.y, '#00ffff'); activeDrones--;
-                p.hp--;
+                p.hp -= 50;
                 if (p.hp <= 0) { createExplosion(p.x, p.y, p.color); piratesList.splice(i, 1); pirateHit = true; }
                 updateUI(); break;
             }
@@ -339,7 +431,7 @@ function update() {
         let earned = player.inventory * getDebrisValue() * multiplier;
 
         state.coins += earned; audio.play('coin');
-        showFloatingText(`+${earned}`, player.x, player.y - 30, multiplier > 1 ? '#ffd700' : '#00ff00');
+        showFloatingText(`+{earned}`, player.x, player.y - 30, multiplier > 1 ? '#ffd700' : '#00ff00');
         debrisCollected += player.inventory; player.inventory = 0;
 
         saveProgress(); updateUI();
@@ -348,7 +440,8 @@ function update() {
         if (debrisCollected >= getDebrisNeeded()) {
             gameState = 'PAUSED'; ui.hud.classList.add('hidden'); ui.overlayScreen.classList.remove('hidden');
             if (tutorialStage === 3) { state.tutorialCompleted = true; tutorialStage = 0; saveProgress(); }
-            if (currentSector === state.maxSector) { state.maxSector++; saveProgress(); }
+            if (currentSector === state.maxSector) { state.maxSector++; }
+            resetRun();
         }
     }
 
@@ -361,7 +454,7 @@ function drawPlayer(x, y, isInvulnerable) {
     ctx.save(); ctx.translate(x, y);
     if (isInvulnerable && Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
     ctx.beginPath(); ctx.arc(0, 5, 15, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0, 255, 255, 0.5)'; ctx.filter = 'blur(5px)'; ctx.fill(); ctx.filter = 'none';
-    ctx.beginPath(); ctx.ellipse(0, 0, 22, 10, 0, 0, Math.PI * 2); ctx.fillStyle = '#aaa'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.ellipse(0, 0, state.hasAdvancedShip ? 28 : 22, state.hasAdvancedShip ? 14 : 10, 0, 0, Math.PI * 2); ctx.fillStyle = state.hasAdvancedShip ? '#ffcc00' : '#aaa'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
     ctx.beginPath(); ctx.arc(0, -5, 10, Math.PI, 0); ctx.fillStyle = 'rgba(0, 255, 255, 0.7)'; ctx.fill(); ctx.stroke();
     ctx.restore();
 }
@@ -381,19 +474,8 @@ function drawBase(x, y, rot) {
 
 function drawPirate(p) {
     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(Math.atan2(player.y - p.y, player.x - p.x));
-
-    // Изменение формы в зависимости от типа
-    ctx.beginPath();
-    if (p.type === 'tank') {
-        ctx.moveTo(p.radius, 0); ctx.lineTo(-p.radius/2, p.radius); ctx.lineTo(-p.radius/2, -p.radius);
-    } else if (p.type === 'fast') {
-        ctx.moveTo(p.radius*1.5, 0); ctx.lineTo(-p.radius, p.radius/2); ctx.lineTo(-p.radius, -p.radius/2);
-    } else {
-        ctx.moveTo(15, 0); ctx.lineTo(-10, 10); ctx.lineTo(-5, 0); ctx.lineTo(-10, -10);
-    }
-    ctx.closePath();
-
-    ctx.fillStyle = p.color; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = p.color; ctx.beginPath(); ctx.moveTo(p.radius, 0); ctx.lineTo(-p.radius, p.radius); ctx.lineTo(-p.radius, -p.radius); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.fillRect(-p.radius, -p.radius-5, p.radius*2 * (p.hp/p.maxHp), 3);
     ctx.restore();
 }
 
@@ -462,6 +544,13 @@ function draw() {
 if (gameState === 'MENU' || gameState === 'SECTOR_SELECT') { base.rotation += 0.002; drawBase(base.x, base.y, base.rotation); ctx.restore(); return; }
 
     drawBase(base.x, base.y, base.rotation);
+
+    minesList.forEach(m => {
+        ctx.fillStyle = m.armed ? (Math.floor(Date.now() / 200) % 2 === 0 ? '#ff0000' : '#880000') : '#555';
+        ctx.beginPath(); ctx.arc(m.x, m.y, m.radius, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = '#fff'; ctx.stroke();
+    });
+
     asteroidsList.forEach(drawAsteroid);
     debrisList.forEach(drawDebris);
     piratesList.forEach(drawPirate);
@@ -527,10 +616,11 @@ function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
 function saveProgress() { if (playerSDK) playerSDK.setData(state).catch(e => console.log('Save Error', e)); }
 
 function startGame(sectorNumber) {
+    resetRun();
     currentSector = sectorNumber; debrisCollected = 0; player.hp = player.maxHp; player.inventory = 0; activeDrones = 0;
-    debrisList = []; piratesList = []; asteroidsList = []; state.goldenValueBuff = false;
+    debrisList = []; piratesList = []; minesList = []; asteroidsList = []; state.goldenValueBuff = false;
 
-    player.x = base.x; player.y = base.y + 120; target.x = player.x; target.y = player.y;
+    player.x = base.x; player.y = base.y + 120; target.x = player.x; target.y = player.y; pointer.x = player.x; pointer.y = player.y; camera.x = 0; camera.y = 0;
     updateUI(); showScreen('GAME');
 
     if (sectorNumber === 1 && !state.tutorialCompleted) { tutorialStage = 1; showTutorialText("Управляй кораблем и собирай мусор!", 3000); }
@@ -550,7 +640,7 @@ function buyUpgrade(type) {
 ui.buyDroneBtn.onclick = () => buyUpgrade('drone'); ui.upgradeHpBtn.onclick = () => buyUpgrade('hp'); ui.upgradeProfitBtn.onclick = () => buyUpgrade('profit'); ui.upgradeSpeedBtn.onclick = () => buyUpgrade('speed'); ui.upgradeCapBtn.onclick = () => buyUpgrade('capacity'); ui.upgradeMagnetBtn.onclick = () => buyUpgrade('magnet');
 
 ui.nextSectorBtn.onclick = () => { if (ys) { ys.adv.showFullscreenAdv({ callbacks: { onClose: () => showScreen('SECTORS'), onError: () => showScreen('SECTORS') } }); } else { showScreen('SECTORS'); } };
-ui.reviveBtn.onclick = () => { if (ys) { ys.adv.showRewardedVideo({ callbacks: { onRewarded: () => { player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = []; updateUI(); showScreen('GAME'); }, onError: () => showScreen('SECTORS') } }); } else { player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = []; updateUI(); showScreen('GAME'); } };
+ui.reviveBtn.onclick = () => { if (ys) { ys.adv.showRewardedVideo({ callbacks: { onRewarded: () => { player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = []; minesList = []; asteroidsList = []; debrisList = []; updateUI(); showScreen('GAME'); }, onError: () => showScreen('SECTORS') } }); } else { player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = []; minesList = []; asteroidsList = []; debrisList = []; updateUI(); showScreen('GAME'); } };
 ui.restartBtn.onclick = () => showScreen('SECTORS');
 
 // --- СТАРТ И YANDEX SDK ---
@@ -562,7 +652,7 @@ if (typeof YaGames !== 'undefined') {
         ys.getPlayer({ scopes: false }).then(_player => {
             playerSDK = _player;
             playerSDK.getData().then(data => {
-                if (data && data.maxSector) { state = { ...state, ...data }; audio.muted = state.muted; updateMuteButtons(); } updateUI();
+                if (data) { state = { ...state, ...data }; if(!state.metaCoins) state.metaCoins = 0; audio.muted = state.muted; updateMuteButtons(); } updateUI();
             }).catch(e => console.log('Load error', e));
         }).catch(e => console.log('Auth error', e));
     });
