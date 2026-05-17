@@ -33,6 +33,11 @@ const ui = {
 
     btnPlay: document.getElementById('btnPlay'), sectorGrid: document.getElementById('sectorGrid'),
     btnBackToMain: document.getElementById('btnBackToMain'), btnMuteMenu: document.getElementById('btnMuteMenu'),
+
+    btnHangar: document.getElementById('btnHangar'), btnHowToPlay: document.getElementById('btnHowToPlay'),
+    hangarMenu: document.getElementById('hangarMenu'), howToPlayMenu: document.getElementById('howToPlayMenu'),
+    btnBackFromHangar: document.getElementById('btnBackFromHangar'), btnBackFromHowToPlay: document.getElementById('btnBackFromHowToPlay'),
+    shipGrid: document.getElementById('shipGrid'), hangarBank: document.getElementById('hangarBank'),
     btnMuteHud: document.getElementById('btnMuteHud'),
 
     level: document.getElementById('level'), progress: document.getElementById('progress'),
@@ -51,9 +56,23 @@ const ui = {
 };
 
 // --- СОСТОЯНИЕ ИГРЫ (ОБЛАКО) ---
+const shipsData = [
+    { id: 0, name: "Новичок", cost: 0, hpBase: 100, speedBase: 4, capBase: 10, magnetBase: 100, profitMultBase: 1.0, color: "#aaa" },
+    { id: 1, name: "Разведчик", cost: 500, hpBase: 120, speedBase: 4.5, capBase: 12, magnetBase: 110, profitMultBase: 1.1, color: "#8df" },
+    { id: 2, name: "Грузовик", cost: 1200, hpBase: 150, speedBase: 3.8, capBase: 25, magnetBase: 120, profitMultBase: 1.2, color: "#d84" },
+    { id: 3, name: "Истребитель", cost: 2500, hpBase: 200, speedBase: 5.5, capBase: 15, magnetBase: 130, profitMultBase: 1.3, color: "#f44" },
+    { id: 4, name: "Стервятник", cost: 5000, hpBase: 250, speedBase: 4.5, capBase: 30, magnetBase: 150, profitMultBase: 1.5, color: "#d4f" },
+    { id: 5, name: "Корвет", cost: 9000, hpBase: 350, speedBase: 5.0, capBase: 40, magnetBase: 170, profitMultBase: 1.7, color: "#4f4" },
+    { id: 6, name: "Фрегат", cost: 15000, hpBase: 500, speedBase: 4.8, capBase: 60, magnetBase: 200, profitMultBase: 2.0, color: "#48f" },
+    { id: 7, name: "Эсминец", cost: 25000, hpBase: 750, speedBase: 5.5, capBase: 80, magnetBase: 250, profitMultBase: 2.5, color: "#f84" },
+    { id: 8, name: "Крейсер", cost: 40000, hpBase: 1000, speedBase: 5.2, capBase: 120, magnetBase: 300, profitMultBase: 3.0, color: "#f48" },
+    { id: 9, name: "Джаггернаут", cost: 75000, hpBase: 2000, speedBase: 6.0, capBase: 200, magnetBase: 400, profitMultBase: 5.0, color: "gold" }
+];
+
 let state = {
     coins: 0, metaCoins: 0, hasAdvancedShip: false, maxSector: 1, tutorialCompleted: false, muted: false,
     hpLevel: 1, profitLevel: 1, speedLevel: 1, capacityLevel: 1, magnetLevel: 1,
+    ownedShips: [0], currentShipIndex: 0
 };
 
 // --- ТЕКУЩАЯ СЕССИЯ ---
@@ -67,11 +86,11 @@ let ys = null; let playerSDK = null;
 // --- ИГРОВЫЕ ОБЪЕКТЫ ---
 const player = {
     x: 0, y: 0, radius: 20, inventory: 0, hp: 100, invulnerableTime: 0,
-    get maxHp() { return (state.hasAdvancedShip ? 200 : 100) + (state.hpLevel - 1) * 25; },
-    get speed() { return (state.hasAdvancedShip ? 5 : 4) + (state.speedLevel - 1); },
-    get maxCapacity() { return (state.hasAdvancedShip ? 20 : 10) + (state.capacityLevel - 1) * 5; },
-    get magnetRadius() { return 100 + (state.magnetLevel - 1) * 30; },
-    get profitMult() { return 1 + (state.profitLevel - 1) * 0.5; }
+    get maxHp() { return shipsData[state.currentShipIndex].hpBase + (state.hpLevel - 1) * 25; },
+    get speed() { return shipsData[state.currentShipIndex].speedBase + (state.speedLevel - 1) * 0.2; },
+    get maxCapacity() { return shipsData[state.currentShipIndex].capBase + (state.capacityLevel - 1) * 5; },
+    get magnetRadius() { return shipsData[state.currentShipIndex].magnetBase + (state.magnetLevel - 1) * 30; },
+    get profitMult() { return shipsData[state.currentShipIndex].profitMultBase + (state.profitLevel - 1) * 0.5; }
 };
 
 let camera = { x: 0, y: 0 };
@@ -105,9 +124,12 @@ ui.btnMuteMenu.onclick = toggleSound; ui.btnMuteHud.onclick = toggleSound;
 function showScreen(screenId) {
     ui.mainMenu.classList.add('hidden'); ui.sectorMenu.classList.add('hidden'); ui.hud.classList.add('hidden');
     ui.shopModal.classList.add('hidden'); ui.overlayScreen.classList.add('hidden'); ui.reviveScreen.classList.add('hidden');
+    ui.hangarMenu.classList.add('hidden'); ui.howToPlayMenu.classList.add('hidden');
     if (screenId === 'MAIN') { gameState = 'MENU'; ui.mainMenu.classList.remove('hidden'); }
     else if (screenId === 'SECTORS') { gameState = 'SECTOR_SELECT'; buildSectorGrid(); ui.sectorMenu.classList.remove('hidden'); }
     else if (screenId === 'GAME') { gameState = 'PLAYING'; ui.hud.classList.remove('hidden'); }
+    else if (screenId === 'HANGAR') { gameState = 'MENU'; buildHangar(); ui.hangarMenu.classList.remove('hidden'); }
+    else if (screenId === 'HOW_TO_PLAY') { gameState = 'MENU'; ui.howToPlayMenu.classList.remove('hidden'); }
 }
 
 function buildSectorGrid() {
@@ -117,6 +139,47 @@ function buildSectorGrid() {
         if (i <= state.maxSector) btn.onclick = () => startGame(i); else { btn.disabled = true; btn.innerText = '🔒'; }
         ui.sectorGrid.appendChild(btn);
     }
+}
+
+function buildHangar() {
+    ui.hangarBank.innerText = state.metaCoins;
+    ui.shipGrid.innerHTML = '';
+    shipsData.forEach((ship, index) => {
+        let item = document.createElement('div');
+        item.className = 'shop-item';
+        let isOwned = state.ownedShips.includes(ship.id);
+        let isSelected = state.currentShipIndex === ship.id;
+
+        item.innerHTML = `
+            <div class="item-info">
+                <h3 style="color: ${ship.color};">${ship.name}</h3>
+                <p style="font-size: 0.9rem; color: #aaa;">HP: ${ship.hpBase} | Скорость: ${ship.speedBase} | Трюм: ${ship.capBase} | Магнит: ${ship.magnetBase} | Множитель: x${ship.profitMultBase}</p>
+            </div>
+            <button id="shipBtn_${ship.id}" class="buy-btn" ${!isOwned && state.metaCoins < ship.cost ? 'disabled' : ''}>
+                ${isSelected ? 'ВЫБРАН' : isOwned ? 'ВЫБРАТЬ' : 'Купить (' + ship.cost + ')'}
+            </button>
+        `;
+        ui.shipGrid.appendChild(item);
+
+        let btn = document.getElementById(`shipBtn_${ship.id}`);
+        if (!isSelected) {
+            btn.onclick = () => {
+                if (isOwned) {
+                    state.currentShipIndex = ship.id;
+                    saveProgress();
+                    buildHangar();
+                } else if (state.metaCoins >= ship.cost) {
+                    state.metaCoins -= ship.cost;
+                    state.ownedShips.push(ship.id);
+                    state.currentShipIndex = ship.id;
+                    saveProgress();
+                    buildHangar();
+                }
+            };
+        } else {
+            btn.style.background = '#28a745';
+        }
+    });
 }
 
 // --- СПАВНЕРЫ ---
@@ -288,12 +351,6 @@ function updateUI() {
     ui.upgradeHpBtn.disabled = state.coins < costs.hp(state.hpLevel); ui.upgradeProfitBtn.disabled = state.coins < costs.profit(state.profitLevel);
     ui.upgradeSpeedBtn.disabled = state.coins < costs.speed(state.speedLevel); ui.upgradeCapBtn.disabled = state.coins < costs.capacity(state.capacityLevel);
     ui.upgradeMagnetBtn.disabled = state.coins < costs.magnet(state.magnetLevel); ui.buyDroneBtn.disabled = state.coins < costs.drone() || activeDrones >= 3;
-
-    if(!ui.buyShipBtn) ui.buyShipBtn = document.getElementById('buyShipBtn');
-    if (ui.buyShipBtn) {
-        ui.buyShipBtn.disabled = state.metaCoins < 5000 || state.hasAdvancedShip;
-        ui.buyShipBtn.innerText = state.hasAdvancedShip ? 'КОРАБЛЬ КУПЛЕН' : 'Купить Продвинутый Корабль (Банк: 5000)';
-    }
 }
 
 function showTutorialText(text, timeMs = 0) {
@@ -431,12 +488,12 @@ function update() {
         let earned = player.inventory * getDebrisValue() * multiplier;
 
         state.coins += earned; audio.play('coin');
-        showFloatingText(`+{earned}`, player.x, player.y - 30, multiplier > 1 ? '#ffd700' : '#00ff00');
+        showFloatingText(`+${earned}`, player.x, player.y - 30, multiplier > 1 ? '#ffd700' : '#00ff00');
         debrisCollected += player.inventory; player.inventory = 0;
 
         saveProgress(); updateUI();
 
-        if (tutorialStage === 2) { tutorialStage = 3; showTutorialText("Открой Магазин и улучши свой корабль!"); }
+        if (tutorialStage === 2) { tutorialStage = 3; showTutorialText("Открой Магазин и улучши свой корабль!", 5000); }
         if (debrisCollected >= getDebrisNeeded()) {
             gameState = 'PAUSED'; ui.hud.classList.add('hidden'); ui.overlayScreen.classList.remove('hidden');
             if (tutorialStage === 3) { state.tutorialCompleted = true; tutorialStage = 0; saveProgress(); }
@@ -453,9 +510,11 @@ function update() {
 function drawPlayer(x, y, isInvulnerable) {
     ctx.save(); ctx.translate(x, y);
     if (isInvulnerable && Math.floor(Date.now() / 100) % 2 === 0) ctx.globalAlpha = 0.5;
-    ctx.beginPath(); ctx.arc(0, 5, 15, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0, 255, 255, 0.5)'; ctx.filter = 'blur(5px)'; ctx.fill(); ctx.filter = 'none';
-    ctx.beginPath(); ctx.ellipse(0, 0, state.hasAdvancedShip ? 28 : 22, state.hasAdvancedShip ? 14 : 10, 0, 0, Math.PI * 2); ctx.fillStyle = state.hasAdvancedShip ? '#ffcc00' : '#aaa'; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
-    ctx.beginPath(); ctx.arc(0, -5, 10, Math.PI, 0); ctx.fillStyle = 'rgba(0, 255, 255, 0.7)'; ctx.fill(); ctx.stroke();
+    let shipColor = shipsData[state.currentShipIndex].color;
+    let sizeMult = 1 + (state.currentShipIndex * 0.05);
+    ctx.beginPath(); ctx.arc(0, 5, 15 * sizeMult, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0, 255, 255, 0.5)'; ctx.filter = 'blur(5px)'; ctx.fill(); ctx.filter = 'none';
+    ctx.beginPath(); ctx.ellipse(0, 0, 22 * sizeMult, 10 * sizeMult, 0, 0, Math.PI * 2); ctx.fillStyle = shipColor; ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, -5 * sizeMult, 10 * sizeMult, Math.PI, 0); ctx.fillStyle = 'rgba(0, 255, 255, 0.7)'; ctx.fill(); ctx.stroke();
     ctx.restore();
 }
 
@@ -627,6 +686,8 @@ function startGame(sectorNumber) {
 }
 
 ui.btnPlay.onclick = () => showScreen('SECTORS'); ui.btnBackToMain.onclick = () => showScreen('MAIN');
+ui.btnHangar.onclick = () => showScreen('HANGAR'); ui.btnBackFromHangar.onclick = () => showScreen('MAIN');
+ui.btnHowToPlay.onclick = () => showScreen('HOW_TO_PLAY'); ui.btnBackFromHowToPlay.onclick = () => showScreen('MAIN');
 ui.openShopBtn.onclick = () => { gameState = 'PAUSED'; updateUI(); ui.hud.classList.add('hidden'); ui.shopModal.classList.remove('hidden'); if (tutorialStage === 3) ui.tutorialOverlay.classList.add('hidden'); };
 ui.closeShopBtn.onclick = () => { gameState = 'PLAYING'; target.x = player.x; target.y = player.y; ui.shopModal.classList.add('hidden'); ui.hud.classList.remove('hidden'); };
 

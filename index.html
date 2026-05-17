@@ -21,14 +21,33 @@
         <div class="menu-container">
             <h1 class="game-title">АСТРО<br>УБОРЩИК</h1>
             <button id="btnPlay" class="mega-btn">ВЫБРАТЬ СЕКТОР</button>
-            <div class="menu-instructions">
-                <h3>Как играть:</h3>
+            <button id="btnHangar" class="mega-btn" style="margin-top: 15px; background: linear-gradient(180deg, #ff9900, #b36b00);">АНГАР КОРАБЛЕЙ</button>
+            <button id="btnHowToPlay" class="mega-btn" style="margin-top: 15px; background: linear-gradient(180deg, #555, #222);">КАК ИГРАТЬ</button>
+        </div>
+    </div>
+
+    <div id="howToPlayMenu" class="screen-overlay hidden">
+        <div class="menu-container wide">
+            <h2>КАК ИГРАТЬ</h2>
+            <div class="menu-instructions" style="text-align: left; font-size: 1.2rem; line-height: 1.8;">
                 <p>🚀 Управляй кораблем мышкой или касанием.</p>
                 <p>🗑️ Собирай космический мусор (подлетай близко).</p>
                 <p>💰 Сдавай мусор на зеленую Базу, чтобы получить монеты.</p>
-                <p>🛒 Прокачивай корабль в Магазине (клавиша <b>M</b> или <b>Ь</b>).</p>
+                <p>🛒 Прокачивай корабль во внутриигровом Магазине (клавиша <b>M</b> или <b>Ь</b>).</p>
                 <p>⚠️ Остерегайся пиратов и астероидов!</p>
             </div>
+            <button id="btnBackFromHowToPlay" class="close-btn mt-20">Назад в меню</button>
+        </div>
+    </div>
+
+    <div id="hangarMenu" class="screen-overlay hidden">
+        <div class="menu-container wide">
+            <h2>АНГАР КОРАБЛЕЙ</h2>
+            <h3 style="color: gold; margin-bottom: 15px;">Банк: <span id="hangarBank">0</span></h3>
+            <div id="shipGrid" class="shop-items scrollable" style="max-height: 50vh;">
+                <!-- Генерируется через JS -->
+            </div>
+            <button id="btnBackFromHangar" class="close-btn mt-20">Назад в меню</button>
         </div>
     </div>
 
@@ -126,13 +145,6 @@
                     <button id="upgradeSpeedBtn" class="buy-btn">Улучшить</button>
                 </div>
 
-                <div class="shop-item">
-                    <div class="item-info">
-                        <h3 style="color: gold;">Продвинутый Корабль</h3>
-                        <p>Удваивает базовые характеристики.</p>
-                    </div>
-                    <button id="buyShipBtn" class="buy-btn">Купить (Банк: 5000)</button>
-                </div>
             </div>
             <button id="closeShopBtn" class="close-btn mt-20">Вернуться в космос</button>
         </div>
