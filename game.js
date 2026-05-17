@@ -6,6 +6,7 @@ const audio = {
     muted: false,
     sounds: {
         coin: new Audio('coin.mp3'),
+        collect: new Audio('collect.wav'),
         suck: new Audio('suck.mp3'),
         hit: new Audio('hit.mp3'),
         upgrade: new Audio('upgrade.mp3')
@@ -141,31 +142,57 @@ setInterval(spawnDebris, 800);
 
 function spawnHazards() {
     if (gameState !== 'PLAYING') return;
-    if (tutorialStage > 0 && tutorialStage < 3) return;
 
     // Пираты
     if (piratesList.length < getPirateCount()) {
-        const angle = Math.random() * Math.PI * 2; const dist = Math.max(canvas.width, canvas.height);
-        let type = 'normal'; let color = '#e53e3e'; let speedMult = 1; let pRadius = 15; let hp = 1;
+        let side = Math.floor(Math.random() * 4);
+        let px, py;
+        if (side === 0) { px = Math.random() * canvas.width; py = -50; }
+        else if (side === 1) { px = canvas.width + 50; py = Math.random() * canvas.height; }
+        else if (side === 2) { px = Math.random() * canvas.width; py = canvas.height + 50; }
+        else { px = -50; py = Math.random() * canvas.height; }
 
-        // Вариации пиратов
-        if (currentSector >= 5 && Math.random() < 0.3) { type = 'fast'; color = '#dd6b20'; speedMult = 1.5; pRadius = 12; }
-        else if (currentSector >= 10 && Math.random() < 0.2) { type = 'tank'; color = '#805ad5'; speedMult = 0.6; pRadius = 20; hp = 2; }
+        let type = 'normal';
+        let speedMult = 1;
+        let hpMult = 1;
+        let color = '#ff0044';
+
+        if (currentSector >= 3 && Math.random() < 0.3) {
+            type = 'fast'; speedMult = 1.5; hpMult = 0.5; color = '#ff00ff';
+        } else if (currentSector >= 4 && Math.random() < 0.2) {
+            type = 'tank'; speedMult = 0.6; hpMult = 2.5; color = '#880000';
+        }
 
         piratesList.push({
-            x: player.x + Math.cos(angle) * dist, y: player.y + Math.sin(angle) * dist,
-            radius: pRadius, speed: (2 + currentSector * 0.2) * speedMult,
-            wobble: Math.random() * Math.PI * 2, type: type, color: color, hp: hp
+            x: px, y: py, radius: 18,
+            speed: (1.5 + currentSector * 0.2) * speedMult,
+            hp: (20 + currentSector * 10) * hpMult,
+            maxHp: (20 + currentSector * 10) * hpMult,
+            color: color,
+            type: type,
+            wobble: Math.random() * Math.PI * 2
         });
     }
 
     // Астероиды
-    if (asteroidsList.length < getAsteroidCount()) {
-        const angle = Math.random() * Math.PI * 2; const dist = Math.max(canvas.width, canvas.height);
+    if (currentSector >= 3 && asteroidsList.length < getAsteroidCount()) {
+        let side = Math.floor(Math.random() * 4);
+        let px, py;
+        if (side === 0) { px = Math.random() * canvas.width; py = -50; }
+        else if (side === 1) { px = canvas.width + 50; py = Math.random() * canvas.height; }
+        else if (side === 2) { px = Math.random() * canvas.width; py = canvas.height + 50; }
+        else { px = -50; py = Math.random() * canvas.height; }
+
+        let angle = Math.random() * Math.PI * 2;
+        let speed = 1 + Math.random() * 2;
+
         asteroidsList.push({
-            x: base.x + Math.cos(angle) * dist, y: base.y + Math.sin(angle) * dist,
-            vx: (Math.random() - 0.5) * 2, vy: (Math.random() - 0.5) * 2,
-            radius: 20 + Math.random() * 20, rotation: 0, rotSpeed: (Math.random() - 0.5) * 0.05
+            x: px, y: py, radius: 25 + Math.random() * 20,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            hp: 50 + currentSector * 10,
+            rotation: 0,
+            rotSpeed: (Math.random() - 0.5) * 0.1
         });
     }
 }
@@ -186,9 +213,9 @@ function updateUI() {
     ui.thrustText.innerText = `${thrustPercent}%`;
     ui.thrustFill.style.width = `${thrustPercent}%`;
 
-    ui.upgradeHpBtn.innerText = `Улучшить (${costs.hp(state.hpLevel)}$)`; ui.upgradeProfitBtn.innerText = `Улучшить (${costs.profit(state.profitLevel)}$)`;
-    ui.upgradeSpeedBtn.innerText = `Улучшить (${costs.speed(state.speedLevel)}$)`; ui.upgradeCapBtn.innerText = `Улучшить (${costs.capacity(state.capacityLevel)}$)`;
-    ui.upgradeMagnetBtn.innerText = `Улучшить (${costs.magnet(state.magnetLevel)}$)`;
+    ui.upgradeHpBtn.innerText = `Улучшить (${costs.hp(state.hpLevel)})`; ui.upgradeProfitBtn.innerText = `Улучшить (${costs.profit(state.profitLevel)})`;
+    ui.upgradeSpeedBtn.innerText = `Улучшить (${costs.speed(state.speedLevel)})`; ui.upgradeCapBtn.innerText = `Улучшить (${costs.capacity(state.capacityLevel)})`;
+    ui.upgradeMagnetBtn.innerText = `Улучшить (${costs.magnet(state.magnetLevel)})`;
 
     ui.upgradeHpBtn.disabled = state.coins < costs.hp(state.hpLevel); ui.upgradeProfitBtn.disabled = state.coins < costs.profit(state.profitLevel);
     ui.upgradeSpeedBtn.disabled = state.coins < costs.speed(state.speedLevel); ui.upgradeCapBtn.disabled = state.coins < costs.capacity(state.capacityLevel);
@@ -240,6 +267,7 @@ function update() {
             d.x += (ddx / dDist) * (currentSpeed * 2); d.y += (ddy / dDist) * (currentSpeed * 2);
             if (dDist < player.radius) {
                 // Если мусор золотой, он занимает столько же места, но стоит x5
+                audio.play('collect');
                 d.isGolden ? player.inventory++ : player.inventory++;
                 d.isGolden ? state.goldenValueBuff = true : null; // Временный маркер для сдачи
                 debrisList.splice(i, 1); updateUI();
@@ -301,7 +329,7 @@ function update() {
         let earned = player.inventory * getDebrisValue() * multiplier;
 
         state.coins += earned; audio.play('coin');
-        showFloatingText(`+${earned}$`, player.x, player.y - 30, multiplier > 1 ? '#ffd700' : '#00ff00');
+        showFloatingText(`+${earned}`, player.x, player.y - 30, multiplier > 1 ? '#ffd700' : '#00ff00');
         debrisCollected += player.inventory; player.inventory = 0;
 
         saveProgress(); updateUI();
@@ -338,7 +366,7 @@ function drawBase(x, y, rot) {
     ctx.beginPath(); ctx.arc(0, 0, 30, 0, Math.PI * 2); ctx.fillStyle = '#2d3748'; ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2); ctx.fillStyle = '#00ff00'; ctx.fill();
     ctx.restore();
-    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center'; ctx.fillText('БАЗА', x, y + 5);
+    ctx.fillStyle = '#ffffff'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center'; // ctx.fillText('БАЗА', x, y + 5);
 }
 
 function drawPirate(p) {
@@ -473,3 +501,13 @@ if (typeof YaGames !== 'undefined') {
         }).catch(e => console.log('Auth error', e));
     });
 }
+window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'm' || e.key.toLowerCase() === 'ь') {
+        if (gameState !== 'PLAYING' && gameState !== 'PAUSED') return;
+        if (ui.shopModal && ui.shopModal.classList.contains('hidden')) {
+            ui.openShopBtn.onclick();
+        } else if (ui.shopModal && !ui.shopModal.classList.contains('hidden')) {
+            ui.closeShopBtn.onclick();
+        }
+    }
+});
