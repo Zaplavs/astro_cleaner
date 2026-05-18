@@ -324,7 +324,7 @@ function resetRun() {
 
     piratesList = []; minesList = []; asteroidsList = []; debrisList = [];
     player.x = canvas.width / 2; player.y = canvas.height / 2;
-    camera.x = 0; camera.y = 0;
+    camera.x = player.x - canvas.width / 2; camera.y = player.y - canvas.height / 2;
     target.x = player.x; target.y = player.y; pointer.x = player.x; pointer.y = player.y;
     saveProgress();
     updateUI();
@@ -689,7 +689,7 @@ function startGame(sectorNumber) {
     currentSector = sectorNumber; debrisCollected = 0; player.hp = player.maxHp; player.inventory = 0; activeDrones = 0;
     debrisList = []; piratesList = []; minesList = []; asteroidsList = []; state.goldenValueBuff = false;
 
-    player.x = base.x; player.y = base.y + 120; target.x = player.x; target.y = player.y; pointer.x = player.x; pointer.y = player.y; camera.x = 0; camera.y = 0;
+    player.x = base.x; player.y = base.y + 120; target.x = player.x; target.y = player.y; pointer.x = player.x; pointer.y = player.y; camera.x = player.x - canvas.width / 2; camera.y = player.y - canvas.height / 2;
     updateUI(); showScreen('GAME');
 
     if (sectorNumber === 1 && !state.tutorialCompleted) { tutorialStage = 1; showTutorialText(t('tut_1'), 3000); }
