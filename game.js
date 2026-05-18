@@ -728,7 +728,6 @@ document.addEventListener("visibilitychange", () => {
 });
 
 // --- СТАРТ И YANDEX SDK ---
-showScreen('MAIN'); gameLoop();
 
 function applyTranslations() {
     document.querySelectorAll('[data-i18n]').forEach(el => {
@@ -736,9 +735,14 @@ function applyTranslations() {
     });
 }
 
+function startGameFlow() {
+    showScreen('MAIN');
+    gameLoop();
+}
+
 if (typeof YaGames !== 'undefined') {
     YaGames.init().then(ysdk => {
-        ys = ysdk; ys.features.LoadingAPI?.ready();
+        ys = ysdk;
         if (ys.environment && ys.environment.i18n && ys.environment.i18n.lang) {
             window.lang = ys.environment.i18n.lang === 'ru' ? 'ru' : 'en';
             applyTranslations();
@@ -746,12 +750,16 @@ if (typeof YaGames !== 'undefined') {
         ys.getPlayer({ scopes: false }).then(_player => {
             playerSDK = _player;
             playerSDK.getData().then(data => {
-                if (data) { state = { ...state, ...data }; if(!state.metaCoins) state.metaCoins = 0; audio.muted = state.muted; updateMuteButtons(); } updateUI();
-            }).catch(e => console.log('Load error', e));
-        }).catch(e => console.log('Auth error', e));
+                if (data) { state = { ...state, ...data }; if(!state.metaCoins) state.metaCoins = 0; audio.muted = state.muted; updateMuteButtons(); }
+                updateUI();
+                startGameFlow();
+                ys.features.LoadingAPI?.ready(); // Вызываем только после загрузки данных игрока и обновления интерфейса
+            }).catch(e => { console.log('Load error', e); startGameFlow(); ys.features.LoadingAPI?.ready(); });
+        }).catch(e => { console.log('Auth error', e); startGameFlow(); ys.features.LoadingAPI?.ready(); });
     });
 } else {
     applyTranslations();
+    startGameFlow();
 }
 window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'm' || e.key.toLowerCase() === 'ь') {

@@ -1,11 +1,7 @@
-const fs = require('fs');
-let gameJS = fs.readFileSync('/app/game.js', 'utf8');
+const code = require('fs').readFileSync('game.js', 'utf-8');
 try {
-    eval(gameJS);
+  new Function(code);
+  console.log("Syntax is valid.");
 } catch(e) {
-    if (e instanceof ReferenceError) {
-        // window and document aren't defined in node, this is fine.
-    } else {
-        console.error("Syntax Error or similar:", e);
-    }
+  console.error(e);
 }
