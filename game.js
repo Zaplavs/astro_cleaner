@@ -153,10 +153,10 @@ function buildHangar() {
         item.innerHTML = `
             <div class="item-info">
                 <h3 style="color: ${ship.color};">${ship.name}</h3>
-                <p style="font-size: 0.9rem; color: #aaa;">HP: ${ship.hpBase} | Скорость: ${ship.speedBase} | Трюм: ${ship.capBase} | Магнит: ${ship.magnetBase} | Множитель: x${ship.profitMultBase}</p>
+                <p style="font-size: 0.9rem; color: #aaa;">${t('stats_hp')}${ship.hpBase} | ${t('stats_speed')}${ship.speedBase} | ${t('stats_cap')}${ship.capBase} | ${t('stats_mag')}${ship.magnetBase} | ${t('stats_prof')}${ship.profitMultBase}</p>
             </div>
             <button id="shipBtn_${ship.id}" class="buy-btn" ${!isOwned && state.metaCoins < ship.cost ? 'disabled' : ''}>
-                ${isSelected ? 'ВЫБРАН' : isOwned ? 'ВЫБРАТЬ' : 'Купить (' + ship.cost + ')'}
+                ${isSelected ? t('equipped') : isOwned ? t('equip') : t('buy_ship') + ' (' + ship.cost + ')'}
             </button>
         `;
         ui.shipGrid.appendChild(item);
@@ -344,9 +344,9 @@ function updateUI() {
     ui.thrustText.innerText = `${thrustPercent}%`;
     ui.thrustFill.style.width = `${thrustPercent}%`;
 
-    ui.upgradeHpBtn.innerText = `Улучшить (${costs.hp(state.hpLevel)})`; ui.upgradeProfitBtn.innerText = `Улучшить (${costs.profit(state.profitLevel)})`;
-    ui.upgradeSpeedBtn.innerText = `Улучшить (${costs.speed(state.speedLevel)})`; ui.upgradeCapBtn.innerText = `Улучшить (${costs.capacity(state.capacityLevel)})`;
-    ui.upgradeMagnetBtn.innerText = `Улучшить (${costs.magnet(state.magnetLevel)})`;
+    ui.upgradeHpBtn.innerText = `${t('btn_upgrade')} (${costs.hp(state.hpLevel)})`; ui.upgradeProfitBtn.innerText = `${t('btn_upgrade')} (${costs.profit(state.profitLevel)})`;
+    ui.upgradeSpeedBtn.innerText = `${t('btn_upgrade')} (${costs.speed(state.speedLevel)})`; ui.upgradeCapBtn.innerText = `${t('btn_upgrade')} (${costs.capacity(state.capacityLevel)})`;
+    ui.upgradeMagnetBtn.innerText = `${t('btn_upgrade')} (${costs.magnet(state.magnetLevel)})`;
 
     ui.upgradeHpBtn.disabled = state.coins < costs.hp(state.hpLevel); ui.upgradeProfitBtn.disabled = state.coins < costs.profit(state.profitLevel);
     ui.upgradeSpeedBtn.disabled = state.coins < costs.speed(state.speedLevel); ui.upgradeCapBtn.disabled = state.coins < costs.capacity(state.capacityLevel);
@@ -414,7 +414,7 @@ function update() {
                 d.isGolden ? player.inventory++ : player.inventory++;
                 d.isGolden ? state.goldenValueBuff = true : null; // Временный маркер для сдачи
                 debrisList.splice(i, 1); updateUI();
-                if (tutorialStage === 1 && player.inventory >= player.maxCapacity) { tutorialStage = 2; showTutorialText("Багажник полон! Лети на Базу!"); }
+                if (tutorialStage === 1 && player.inventory >= player.maxCapacity) { tutorialStage = 2; showTutorialText(t('tut_2')); }
             }
         }
     }
@@ -458,7 +458,7 @@ function update() {
         for (let j = 0; j < dronePositions.length; j++) {
             let dp = dronePositions[j];
             if (Math.hypot(dp.x - p.x, dp.y - p.y) < dp.radius + p.radius) {
-                createExplosion(dp.x, dp.y, '#00ffff'); showFloatingText("ЩИТ СРАБОТАЛ!", p.x, p.y, '#00ffff'); activeDrones--;
+                createExplosion(dp.x, dp.y, '#00ffff'); showFloatingText(t('float_shield'), p.x, p.y, '#00ffff'); activeDrones--;
                 p.hp -= 50;
                 if (p.hp <= 0) { createExplosion(p.x, p.y, p.color); piratesList.splice(i, 1); pirateHit = true; }
                 updateUI(); break;
@@ -503,7 +503,7 @@ function update() {
 
         saveProgress(); updateUI();
 
-        if (tutorialStage === 2) { tutorialStage = 3; showTutorialText("Открой Магазин и улучши свой корабль!", 5000); }
+        if (tutorialStage === 2) { tutorialStage = 3; showTutorialText(t('tut_3'), 5000); }
         if (debrisCollected >= getDebrisNeeded()) {
             gameState = 'PAUSED'; ui.hud.classList.add('hidden'); ui.overlayScreen.classList.remove('hidden');
             if (tutorialStage === 3) { state.tutorialCompleted = true; tutorialStage = 0; saveProgress(); }
@@ -692,7 +692,7 @@ function startGame(sectorNumber) {
     player.x = base.x; player.y = base.y + 120; target.x = player.x; target.y = player.y; pointer.x = player.x; pointer.y = player.y; camera.x = 0; camera.y = 0;
     updateUI(); showScreen('GAME');
 
-    if (sectorNumber === 1 && !state.tutorialCompleted) { tutorialStage = 1; showTutorialText("Управляй кораблем и собирай мусор!", 3000); }
+    if (sectorNumber === 1 && !state.tutorialCompleted) { tutorialStage = 1; showTutorialText(t('tut_1'), 3000); }
 }
 
 ui.btnPlay.onclick = () => showScreen('SECTORS'); ui.btnBackToMain.onclick = () => showScreen('MAIN');
@@ -714,6 +714,9 @@ ui.nextSectorBtn.onclick = () => { if (ys) { ys.adv.showFullscreenAdv({ callback
 ui.reviveBtn.onclick = () => { if (ys) { ys.adv.showRewardedVideo({ callbacks: { onOpen: () => { window.adPlaying = true; audio.muted = true; }, onRewarded: () => { window.adPlaying = false; audio.muted = state.muted; player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = []; minesList = []; asteroidsList = []; debrisList = []; updateUI(); showScreen('GAME'); }, onClose: () => { window.adPlaying = false; audio.muted = state.muted; }, onError: () => { window.adPlaying = false; audio.muted = state.muted; showScreen('SECTORS'); } } }); } else { player.hp = player.maxHp; player.invulnerableTime = 180; piratesList = []; minesList = []; asteroidsList = []; debrisList = []; updateUI(); showScreen('GAME'); } };
 ui.restartBtn.onclick = () => showScreen('SECTORS');
 
+// Предотвращение контекстного меню (выделение/сохранение картинки)
+document.addEventListener('contextmenu', event => event.preventDefault());
+
 // События вкладки (пауза звука/игры вне вкладки)
 document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
@@ -727,9 +730,19 @@ document.addEventListener("visibilitychange", () => {
 // --- СТАРТ И YANDEX SDK ---
 showScreen('MAIN'); gameLoop();
 
+function applyTranslations() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.innerHTML = t(el.getAttribute('data-i18n'));
+    });
+}
+
 if (typeof YaGames !== 'undefined') {
     YaGames.init().then(ysdk => {
         ys = ysdk; ys.features.LoadingAPI?.ready();
+        if (ys.environment && ys.environment.i18n && ys.environment.i18n.lang) {
+            window.lang = ys.environment.i18n.lang === 'ru' ? 'ru' : 'en';
+            applyTranslations();
+        }
         ys.getPlayer({ scopes: false }).then(_player => {
             playerSDK = _player;
             playerSDK.getData().then(data => {
@@ -737,6 +750,8 @@ if (typeof YaGames !== 'undefined') {
             }).catch(e => console.log('Load error', e));
         }).catch(e => console.log('Auth error', e));
     });
+} else {
+    applyTranslations();
 }
 window.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'm' || e.key.toLowerCase() === 'ь') {

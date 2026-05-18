@@ -19,46 +19,46 @@
     <div id="mainMenu" class="screen-overlay">
         <button id="btnMuteMenu" class="sound-btn">🔊</button>
         <div class="menu-container">
-            <h1 class="game-title">АСТРО<br>УБОРЩИК</h1>
-            <button id="btnPlay" class="mega-btn">ВЫБРАТЬ СЕКТОР</button>
-            <button id="btnHangar" class="mega-btn" style="margin-top: 15px; background: linear-gradient(180deg, #ff9900, #b36b00);">АНГАР КОРАБЛЕЙ</button>
-            <button id="btnHowToPlay" class="mega-btn" style="margin-top: 15px; background: linear-gradient(180deg, #555, #222);">КАК ИГРАТЬ</button>
+            <h1 class="game-title"><span data-i18n="title">АСТРО<br>УБОРЩИК</span></h1>
+            <button id="btnPlay" class="mega-btn" data-i18n="btn_select_sector">ВЫБРАТЬ СЕКТОР</button>
+            <button id="btnHangar" class="mega-btn" style="margin-top: 15px; background: linear-gradient(180deg, #ff9900, #b36b00);" data-i18n="btn_hangar">АНГАР КОРАБЛЕЙ</button>
+            <button id="btnHowToPlay" class="mega-btn" style="margin-top: 15px; background: linear-gradient(180deg, #555, #222);" data-i18n="btn_how_to_play">КАК ИГРАТЬ</button>
         </div>
     </div>
 
     <div id="howToPlayMenu" class="screen-overlay hidden">
         <div class="menu-container wide">
-            <h2>КАК ИГРАТЬ</h2>
+            <h2 data-i18n="how_to_play_title">КАК ИГРАТЬ</h2>
             <div class="menu-instructions" style="text-align: left; font-size: 1.2rem; line-height: 1.8;">
-                <p>🚀 Управляй кораблем мышкой или касанием.</p>
-                <p>🗑️ Собирай космический мусор (подлетай близко).</p>
-                <p>💰 Сдавай мусор на зеленую Базу, чтобы получить монеты.</p>
-                <p>🛒 Прокачивай корабль во внутриигровом Магазине (клавиша <b>M</b> или <b>Ь</b>).</p>
-                <p>⚠️ Остерегайся пиратов и астероидов!</p>
+                <p data-i18n="how_to_1">🚀 Управляй кораблем мышкой или касанием.</p>
+                <p data-i18n="how_to_2">🗑️ Собирай космический мусор (подлетай близко).</p>
+                <p data-i18n="how_to_3">💰 Сдавай мусор на зеленую Базу, чтобы получить монеты.</p>
+                <p data-i18n="how_to_4">🛒 Прокачивай корабль во внутриигровом Магазине (клавиша <b>M</b> или <b>Ь</b>).</p>
+                <p data-i18n="how_to_5">⚠️ Остерегайся пиратов и астероидов!</p>
             </div>
-            <button id="btnBackFromHowToPlay" class="close-btn mt-20">Назад в меню</button>
+            <button id="btnBackFromHowToPlay" class="close-btn mt-20" data-i18n="btn_back">Назад в меню</button>
         </div>
     </div>
 
     <div id="hangarMenu" class="screen-overlay hidden">
         <div class="menu-container wide">
-            <h2>АНГАР КОРАБЛЕЙ</h2>
-            <h3 style="color: gold; margin-bottom: 15px;">Банк: <span id="hangarBank">0</span></h3>
+            <h2 data-i18n="hangar_title">АНГАР КОРАБЛЕЙ</h2>
+            <h3 style="color: gold; margin-bottom: 15px;"><span data-i18n="bank">Банк: </span><span id="hangarBank">0</span></h3>
             <div id="shipGrid" class="shop-items scrollable" style="max-height: 50vh;">
                 <!-- Генерируется через JS -->
             </div>
-            <button id="btnBackFromHangar" class="close-btn mt-20">Назад в меню</button>
+            <button id="btnBackFromHangar" class="close-btn mt-20" data-i18n="btn_back">Назад в меню</button>
         </div>
     </div>
 
     <!-- Выбор Сектора -->
     <div id="sectorMenu" class="screen-overlay hidden">
         <div class="menu-container wide">
-            <h2>КАРТА СЕКТОРОВ</h2>
+            <h2 data-i18n="map_title">КАРТА СЕКТОРОВ</h2>
             <div id="sectorGrid" class="sector-grid">
                 <!-- Генерируется через JS -->
             </div>
-            <button id="btnBackToMain" class="close-btn mt-20">Назад в меню</button>
+            <button id="btnBackToMain" class="close-btn mt-20" data-i18n="btn_back">Назад в меню</button>
         </div>
     </div>
 
@@ -70,24 +70,24 @@
                     <span id="hpText">❤️ 100/100</span>
                     <div class="hp-bar-bg"><div id="hpFill" class="hp-bar-fill"></div></div>
                 </div>
-                <div class="stat-box">🛡️ Защитники: <span id="dronesCount">0 / 3</span></div>
-                <div class="stat-box">📦 Трюм: <span id="capacity">0 / 10</span></div>
+                <div class="stat-box"><span data-i18n="defenders">🛡️ Защитники: </span><span id="dronesCount">0 / 3</span></div>
+                <div class="stat-box"><span data-i18n="cargo">📦 Трюм: </span><span id="capacity">0 / 10</span></div>
             </div>
 
             <div class="hud-center">
-                <div class="sector-display">Сектор: <span id="level">1</span></div>
-                <div class="progress-text">Мусор: <span id="progress">0 / 50</span></div>
+                <div class="sector-display"><span data-i18n="sector">Сектор: </span><span id="level">1</span></div>
+                <div class="progress-text"><span data-i18n="trash">Мусор: </span><span id="progress">0 / 50</span></div>
                 <!-- Новый элемент: Динамическая тяга -->
                 <div class="thrust-container">
-                    <span>Тяга: <span id="thrustText">100%</span></span>
+                    <span><span data-i18n="thrust">Тяга: </span><span id="thrustText">100%</span></span>
                     <div class="thrust-bar-bg"><div id="thrustFill" class="thrust-bar-fill"></div></div>
                 </div>
             </div>
 
             <div class="hud-right">
                 <button id="btnMuteHud" class="sound-btn small">🔊</button>
-                <div class="stat-box gold">💰 В вылазке: <span id="coins">0</span> | Банк: <span id="metaCoins">0</span></div>
-                <button id="openShopBtn" class="hud-btn">🛒 МАГАЗИН</button>
+                <div class="stat-box gold"><span data-i18n="in_run">💰 В вылазке: </span><span id="coins">0</span> | <span data-i18n="bank">Банк: </span><span id="metaCoins">0</span></div>
+                <button id="openShopBtn" class="hud-btn" data-i18n="btn_shop">🛒 МАГАЗИН</button>
             </div>
         </div>
     </div>
@@ -95,84 +95,86 @@
     <!-- Внутриигровой магазин -->
     <div id="shopModal" class="hidden screen-overlay">
         <div class="modal shop-window">
-            <h2>ОРБИТАЛЬНАЯ СТАНЦИЯ</h2>
+            <h2 data-i18n="shop_title">ОРБИТАЛЬНАЯ СТАНЦИЯ</h2>
             <div class="shop-items scrollable">
                 <div class="shop-item">
                     <div class="item-info">
-                        <h3>Защитник</h3>
-                        <p>Летает по орбите, уничтожает 1 пирата.</p>
+                        <h3 data-i18n="shop_drone">Защитник</h3>
+                        <p data-i18n="shop_drone_desc">Летает по орбите, уничтожает 1 пирата.</p>
                     </div>
-                    <button id="buyDroneBtn" class="buy-btn">Купить (200)</button>
+                    <button id="buyDroneBtn" class="buy-btn" data-i18n="btn_buy">Купить (200)</button>
                 </div>
 
                 <div class="shop-item">
                     <div class="item-info">
-                        <h3>Сплав Корпуса</h3>
-                        <p>Увеличивает максимальный запас прочности (HP).</p>
+                        <h3 data-i18n="shop_hp">Сплав Корпуса</h3>
+                        <p data-i18n="shop_hp_desc">Увеличивает максимальный запас прочности (HP).</p>
                     </div>
-                    <button id="upgradeHpBtn" class="buy-btn">Улучшить</button>
+                    <button id="upgradeHpBtn" class="buy-btn" data-i18n="btn_upgrade">Улучшить</button>
                 </div>
 
                 <div class="shop-item">
                     <div class="item-info">
-                        <h3>Улучшенный Сканер</h3>
-                        <p>Множитель прибыли: мусор стоит дороже.</p>
+                        <h3 data-i18n="shop_profit">Улучшенный Сканер</h3>
+                        <p data-i18n="shop_profit_desc">Множитель прибыли: мусор стоит дороже.</p>
                     </div>
-                    <button id="upgradeProfitBtn" class="buy-btn">Улучшить</button>
+                    <button id="upgradeProfitBtn" class="buy-btn" data-i18n="btn_upgrade">Улучшить</button>
                 </div>
 
                 <div class="shop-item">
                     <div class="item-info">
-                        <h3>Отсек Трюма</h3>
-                        <p>Вмещает больше мусора за рейс.</p>
+                        <h3 data-i18n="shop_cap">Отсек Трюма</h3>
+                        <p data-i18n="shop_cap_desc">Вмещает больше мусора за рейс.</p>
                     </div>
-                    <button id="upgradeCapBtn" class="buy-btn">Улучшить</button>
+                    <button id="upgradeCapBtn" class="buy-btn" data-i18n="btn_upgrade">Улучшить</button>
                 </div>
 
                 <div class="shop-item">
                     <div class="item-info">
-                        <h3>Электромагнит</h3>
-                        <p>Увеличивает радиус захвата мусора.</p>
+                        <h3 data-i18n="shop_magnet">Электромагнит</h3>
+                        <p data-i18n="shop_magnet_desc">Увеличивает радиус захвата мусора.</p>
                     </div>
-                    <button id="upgradeMagnetBtn" class="buy-btn">Улучшить</button>
+                    <button id="upgradeMagnetBtn" class="buy-btn" data-i18n="btn_upgrade">Улучшить</button>
                 </div>
 
                 <div class="shop-item">
                     <div class="item-info">
-                        <h3>Двигатель</h3>
-                        <p>Увеличивает базовую скорость полета НЛО.</p>
+                        <h3 data-i18n="shop_speed">Двигатель</h3>
+                        <p data-i18n="shop_speed_desc">Увеличивает базовую скорость полета НЛО.</p>
                     </div>
-                    <button id="upgradeSpeedBtn" class="buy-btn">Улучшить</button>
+                    <button id="upgradeSpeedBtn" class="buy-btn" data-i18n="btn_upgrade">Улучшить</button>
                 </div>
 
             </div>
-            <button id="closeShopBtn" class="close-btn mt-20">Вернуться в космос</button>
+            <button id="closeShopBtn" class="close-btn mt-20" data-i18n="btn_close_shop">Вернуться в космос</button>
         </div>
     </div>
 
     <!-- Экраны состояний -->
     <div id="overlayScreen" class="hidden screen-overlay">
         <div class="modal">
-            <h1 id="overlayTitle">СЕКТОР ЗАЧИЩЕН</h1>
-            <p id="overlayText">Вы собрали весь мусор!</p>
+            <h1 id="overlayTitle" data-i18n="overlay_win">СЕКТОР ЗАЧИЩЕН</h1>
+            <p id="overlayText" data-i18n="overlay_win_desc">Вы собрали весь мусор!</p>
             <div class="modal-buttons">
-                <button id="nextSectorBtn" class="primary-btn">В меню секторов</button>
+                <button id="nextSectorBtn" class="primary-btn" data-i18n="btn_to_sectors">В меню секторов</button>
             </div>
         </div>
     </div>
 
     <div id="reviveScreen" class="hidden screen-overlay">
         <div class="modal">
-            <h1>КОРАБЛЬ РАЗРУШЕН</h1>
-            <p>Вас подбили пираты. Восстановить корабль за рекламу?</p>
+            <h1 data-i18n="overlay_lose">КОРАБЛЬ РАЗРУШЕН</h1>
+            <p data-i18n="overlay_lose_desc">Вас подбили пираты. Восстановить корабль за рекламу?</p>
             <div class="modal-buttons">
-                <button id="reviveBtn" class="primary-btn highlight">Воскреснуть (Реклама)</button>
-                <button id="restartBtn" class="secondary-btn">Отказаться</button>
+                <button id="reviveBtn" class="primary-btn highlight" data-i18n="btn_revive">Воскреснуть (Реклама)</button>
+                <button id="restartBtn" class="secondary-btn" data-i18n="btn_reject">Отказаться</button>
             </div>
         </div>
     </div>
 
     <canvas id="gameCanvas"></canvas>
+    <script src="lang.js"></script>
+    <script src="lang.js"></script>
     <script src="game.js"></script>
 </body>
 </html>
